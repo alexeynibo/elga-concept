@@ -16,8 +16,9 @@
     --ink-dark: #1d2a33;
     --ink-dark-dim: rgba(29, 42, 51, .6);
     --bg: #0d1013;
-    /* поля как в тёмном концепте: 120 px; на экранах шире 1920 контент остаётся шириной 1680 px по центру */
-    --side: max(120px, calc((100vw - 1680px) / 2));
+    /* поля: 180 px — контейнер контента на 120 px уже, чем в тёмном концепте;
+       на экранах шире 1920 контент остаётся шириной 1560 px по центру */
+    --side: max(180px, calc((100vw - 1560px) / 2));
   }
   /* логотип и меню — как в тёмном концепте, только тёмные */
   .logo { display: block; line-height: 0; color: inherit; }
@@ -720,8 +721,8 @@ window.addEventListener('pointermove', e => {
 const KEYS = [
   { at: 0,   pos: new THREE.Vector3(0, 8.4, 3),     look: new THREE.Vector3(0, 7, -14) },
   { at: .3,  pos: new THREE.Vector3(0, 9.2, 62),    look: new THREE.Vector3(0, 4.2, -30) },
-  { at: .46, pos: new THREE.Vector3(0, 1.5, 54),    look: new THREE.Vector3(0, -30, 14) },
-  { at: .66, pos: new THREE.Vector3(0, -30, 42),    look: new THREE.Vector3(0, GROUND_Y, 31) },
+  { at: .42, pos: new THREE.Vector3(0, 1.5, 54),    look: new THREE.Vector3(0, -30, 14) },
+  { at: .52, pos: new THREE.Vector3(0, -30, 42),    look: new THREE.Vector3(0, GROUND_Y, 31) },
   { at: 1,   pos: new THREE.Vector3(0, 0, 31.6),    look: new THREE.Vector3(0, GROUND_Y, 30) },   // высота — по экрану
 ];
 // Финальная высота над разрезом: фото заполняет экран, как фон «cover»
@@ -748,7 +749,7 @@ function placeCamera(p, time) {
   camPos.y += oy; camLook.y += oy;
   camera.position.copy(camPos);
   // когда камера смотрит вниз, «верх» кадра — вперёд по маршруту, иначе кадр заваливается набок
-  const down = sm(.46, .66, p);
+  const down = sm(.42, .52, p);
   camera.up.set(0, 1 - down, -down).normalize();
   camera.lookAt(camLook);
   sky.position.copy(camPos);
@@ -758,7 +759,7 @@ const capHero = document.getElementById('capHero');
 const whiteout = document.getElementById('whiteout');
 // преимущества: блок едет вверх вместе со скроллом (один к одному) и встаёт по центру экрана по высоте
 const perksBox = document.getElementById('perks');
-const PERKS_STOP = .84;                                    // доля пролога, на которой блок встал на место
+const PERKS_STOP = .72;                                    // доля пролога, на которой блок встал на место
 function movePerks(vh, sy) {
   const stopPx = PERKS_STOP * (story.offsetHeight - vh);
   const y = (vh - perksBox.offsetHeight) / 2 + Math.max(0, stopPx - sy);
@@ -768,6 +769,7 @@ function movePerks(vh, sy) {
 // Рисуются справа налево: каждая линия — от своего правого конца, и чем правее линия, тем раньше начинает;
 // левые (рядом с текстом) — последними, когда блок с текстом уже встал. При прокрутке назад стираются обратно
 const maplines = [];
+let linesAuto = 0;                                         // прорисовка линий с учётом дорисовки «самой»
 {
   const svg = document.getElementById('maplines'), ns = 'http://www.w3.org/2000/svg';
   let s = 11;
@@ -841,9 +843,12 @@ function frame(tms) {
   // Второй текст поднимается снизу, пока первый ещё на экране
   const vh = window.innerHeight, sy = window.scrollY;
   capHero.style.transform = `translateY(${vh * .3 - sy}px)`;
-  whiteout.style.opacity = sm(.58, .7, p);                 // сквозь облака — в ровный белый
-  const lines = sm(.7, .97, p);                            // облака ушли с экрана — линии прорисовываются вместе со скроллом
-  drawMaplines(lines);
+  whiteout.style.opacity = sm(.45, .53, p);                // сквозь облака — в ровный белый (нырок короткий: ели ушли — сразу облака и белое)
+  // облака ушли с экрана — основная часть линий прорисовывается вместе со скроллом; когда она готова,
+  // остальное (левый нижний угол) дорисовывается само по времени; прокрутили назад — снова идёт за скроллом
+  const lines = sm(.53, .8, p);
+  linesAuto = lines >= .62 ? Math.min(1, Math.max(linesAuto, lines) + dt * .45) : lines;
+  drawMaplines(linesAuto);
   movePerks(vh, sy);                                       // блок преимуществ приезжает со скроллом
 
   setLight(false);                       // фон везде светлый — шапка тёмная
