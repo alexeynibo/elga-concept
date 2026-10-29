@@ -16,6 +16,16 @@
     --ink-dark: #1d2a33;
     --ink-dark-dim: rgba(29, 42, 51, .6);
     --bg: #0d1013;
+    /* поля как в тёмном концепте: 120 px; на экранах шире 1920 контент остаётся шириной 1680 px по центру */
+    --side: max(120px, calc((100vw - 1680px) / 2));
+  }
+  /* логотип и меню — как в тёмном концепте, только тёмные */
+  .logo { display: block; line-height: 0; color: inherit; }
+  .logo__svg { height: 22px; width: auto; display: block; }
+  @media (min-width: 1800px) {
+    .logo__svg { height: 29px; }
+    .header { font-size: 17px; }
+    .menu { gap: 42px; }
   }
 
   /* Пролог: облака, ели, нырок к разрезу */
@@ -23,18 +33,29 @@
   .stage { position: sticky; top: 0; height: 100vh; overflow: hidden; background: #dde3e8; }
   .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .caption--hero { color: var(--ink-dark); max-width: 56%; }
-  .caption--intro { color: var(--ink-dark); }
 
-  /* Затемнение снизу-слева, чтобы текст читался на светлом разрезе */
-  .scrim {
-    position: absolute; inset: 0; z-index: 4; opacity: 0; pointer-events: none;
-    background: linear-gradient(20deg, rgba(8, 10, 12, .78) 0%, rgba(8, 10, 12, .35) 38%, rgba(8, 10, 12, 0) 62%);
+  /* Под облаками — ровная белая заливка: проступает, пока камера проходит сквозь облака */
+  .whiteout { position: absolute; inset: 0; z-index: 3; background: #fff; opacity: 0; pointer-events: none; }
+  /* Изолинии рельефа (light/maplines.js) — прорисовываются по скроллу, когда облака ушли с экрана */
+  .maplines { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 4; pointer-events: none; }
+  .maplines path { fill: none; stroke: #ccd2d7; stroke-width: 1.5; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+  /* Преимущества: 2×2 слева, на свободном от линий месте. Текст — как у фактоидов тёмного концепта: Golos Text 20 px;
+     иконки свои — контур толщиной со штрих текста. Блок приезжает снизу вместе со скроллом и встаёт по центру экрана */
+  .perks {
+    position: absolute; z-index: 5; left: var(--side); top: 0; width: min(52vw, 860px); will-change: transform;
+    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 56px 48px;
+    color: var(--ink-dark); pointer-events: none;
   }
-  .caption--mine { top: auto; bottom: 12vh; max-width: 640px; color: var(--ink); }
-  .caption--mine .caption__text { color: var(--ink-dim); }
+  .perk { display: flex; align-items: center; gap: 24px; }
+  .perk__icon { flex: none; width: 56px; height: 56px; }
+  .perk__icon path, .perk__icon circle, .perk__icon rect { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }   /* как штрих текста */
+  .perk__text { font-size: 20px; line-height: 1.3; letter-spacing: .01em; max-width: 300px; }
 
   @media (max-width: 760px) {
     .caption--hero { max-width: none; }
+    .perks { left: 16px; right: 16px; width: auto; grid-template-columns: 1fr; gap: 28px; }
+    .perk__icon { width: 44px; height: 44px; }
+    .perk__text { font-size: 15px; }
   }
 </style>
 <script type="importmap">
@@ -44,14 +65,10 @@
 <body>
 
 <header class="header" id="header">
-  <div class="logo">Эльга</div>
+  <a class="logo" href="#" aria-label="Эльга"><svg class="logo__svg" role="img" aria-label="Эльга" fill="currentColor" viewBox="0 0 341.91 109.96" xmlns="http://www.w3.org/2000/svg"><path d="m93.86 16.1c-10.38-10.38-24.19-16.1-38.88-16.1s-28.49 5.72-38.88 16.1c-10.38 10.39-16.1 24.2-16.1 38.88s5.72 28.49 16.1 38.88c10.39 10.39 24.19 16.1 38.88 16.1s28.49-5.72 38.88-16.1 16.1-24.19 16.1-38.88-5.72-28.49-16.1-38.88zm-75.33 68.19c0 1.2-1.52 1.72-2.26.77-6.68-8.56-10.31-19.04-10.31-30.08s3.62-21.51 10.31-30.08c.74-.95 2.26-.44 2.26.77zm66.53 9.4c-8.56 6.68-19.04 10.31-30.08 10.31s-21.51-3.62-30.08-10.31c-.95-.74-.44-2.26.77-2.26h58.62c1.2 0 1.72 1.52.77 2.26zm-60.62-8.16v-61.09h60.99v61.09zm59.85-67h-58.62c-1.2 0-1.72-1.52-.77-2.26 8.56-6.68 19.04-10.31 30.08-10.31s21.51 3.62 30.08 10.31c.95.74.44 2.26-.77 2.26zm9.4 66.52c-.74.95-2.26.44-2.26-.77v-58.61c0-1.2 1.52-1.72 2.26-.77 6.68 8.56 10.31 19.04 10.31 30.08s-3.62 21.51-10.31 30.08z"/><path d="m55.08 45.62c-5.33 0-9.65 4.32-9.65 9.65s4.32 9.65 9.65 9.65 9.65-4.32 9.65-9.65-4.32-9.65-9.65-9.65z"/><path d="m176.61 80.27v9.84h-39.46v-70.26h39.46v9.84h-28.93v19.09h21.25v9.84h-21.25v21.65z"/><path d="m231.31 80.27v9.84h-41.23v-70.26h10.53v60.41h30.7z"/><path d="m262.11 18.58c13.19 0 19.38 7.77 21.84 19.88h-10.53c-1.97-6.89-5.22-9.74-11.81-9.74-10.53 0-14.17 9.84-14.17 26.27s3.64 26.27 14.17 26.27c11.32 0 12.79-8.66 12.79-18.6v-.98h-15.94v-9.84h26.57v7.97c0 19.88-6.69 31.59-22.93 31.59-18.2 0-25.39-14.86-25.39-36.41s7.18-36.41 25.39-36.41z"/><path d="m327.44 69.25h-19.88l-3.84 20.86h-10.33l13.97-70.25h20.47l14.07 70.25h-10.53l-3.94-20.86zm-18.01-9.84h16.14l-5.31-28.73h-5.41l-5.41 28.73z"/></svg></a>
   <nav class="menu" data-c="nav"></nav>
 </header>
 
-<div class="route" id="route">
-  <span id="routeKm"></span>
-  <div class="route__bar"><div class="route__fill" id="routeFill"></div></div>
-</div>
 
 <div class="hint" id="hint" data-c="hint"></div>
 
@@ -65,50 +82,43 @@
       <p class="caption__sub" data-c="hero.subtitle"></p>
     </div>
 
-    <div class="caption caption--intro" id="capIntro">
-      <div class="facts" data-facts="intro.facts"></div>
-    </div>
-
-    <div class="scrim" id="scrim"></div>
-    <div class="caption caption--mine" id="capMine">
-      <div class="caption__label" data-c="mine.label"></div>
-      <div class="caption__num"><span data-c="mine.num"></span><span class="caption__unit" data-c="mine.unit"></span></div>
-      <p class="caption__text" data-c="mine.text"></p>
+    <div class="whiteout" id="whiteout"></div>
+    <svg class="maplines" id="maplines" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
+    <!-- Преимущества: тексты — intro.facts (те же, что в тёмном концепте), иконки — свои, контурные -->
+    <div class="perks" id="perks">
+      <div class="perk">
+        <svg class="perk__icon" viewBox="0 0 48 48" aria-hidden="true"><!-- разрез: уступы карьера и пласты -->
+          <path d="M3 15H11L14 21H18L21 27H27L30 21H34L37 15H45"/><path d="M9 34H39"/><path d="M15 40H33"/></svg>
+        <p class="perk__text" data-c="intro.facts.0.text"></p>
+      </div>
+      <div class="perk">
+        <svg class="perk__icon" viewBox="0 0 48 48" aria-hidden="true"><!-- фабрика: шеды и труба -->
+          <path d="M5 41V24L14 29V24L23 29V24L32 29V9H38V41Z"/><path d="M5 41H43"/><path d="M12 35H16M20 35H24"/></svg>
+        <p class="perk__text" data-c="intro.facts.1.text"></p>
+      </div>
+      <div class="perk">
+        <svg class="perk__icon" viewBox="0 0 48 48" aria-hidden="true"><!-- железная дорога: рельсы в перспективу -->
+          <path d="M13 44L21 4"/><path d="M35 44L27 4"/><path d="M12 38H36"/><path d="M15 29H33"/><path d="M17 21H31"/><path d="M19 14H29"/><path d="M20.5 8H27.5"/></svg>
+        <p class="perk__text" data-c="intro.facts.2.text"></p>
+      </div>
+      <div class="perk">
+        <svg class="perk__icon" viewBox="0 0 48 48" aria-hidden="true"><!-- порт: якорь -->
+          <circle cx="24" cy="7.5" r="3.5"/><path d="M24 11V43"/><path d="M16 18H32"/><path d="M8 29C9 37 16 43 24 43C32 43 39 37 40 29"/><path d="M5 32L8 28L11 32"/><path d="M37 32L40 28L43 32"/></svg>
+        <p class="perk__text" data-c="intro.facts.3.text"></p>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- Добыча: самосвал из тёмных точек на белом -->
-<section class="screen screen--light" id="miningSec">
-  <div class="screen__stage" id="miningStage">
-    <div class="screen__caption" id="capMining">
-      <div class="caption__label" data-c="mining.label"></div>
-      <p class="caption__lead" data-c="mining.text"></p>
-    </div>
-  </div>
-</section>
-
-<!-- Масштаб: видео из тёмных точек на белом -->
-<section class="screen screen--light" id="scaleSec">
-  <div class="screen__stage" id="scaleStage"></div>
-</section>
-
-<section class="after">
-  <h2 data-c="next.title"></h2>
-  <p data-c="next.text"></p>
-  <p class="credits" data-c="credits"></p>
-</section>
 
 <script src="../content/content.js"></script>
+<script src="maplines.js"></script>
 <script src="../shared/elga.js"></script>
-<script src="../assets/belaz-data.js"></script>
 <script type="module">
 import * as THREE from 'three';
 
 Elga.bind();
 
-const IMG_MINE = 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Tur%C3%B3w_Aerial_2.jpg/3840px-Tur%C3%B3w_Aerial_2.jpg';
-const VIDEO_SRC = '../assets/' + encodeURIComponent('Корпоративный_сайт_для_угольной_компании (1080p).mp4');
 
 const stage = document.getElementById('stage');
 let renderer;
@@ -198,7 +208,7 @@ const trailMat = new THREE.ShaderMaterial({
 const trailScene = new THREE.Scene();
 trailScene.add(new THREE.Mesh(quadGeo, trailMat));
 
-// ── 3D-сцена: условные ели, торчащие из моря облаков ──
+// ── 3D-сцена: ели, торчащие из моря облаков ──
 const scene = new THREE.Scene();
 scene.fog = new THREE.Fog(SKY, 14, 135);
 // Небо: сфера вокруг камеры. У горизонта — ровно цвет дымки, поэтому море облаков в него перетекает без линии
@@ -223,6 +233,44 @@ const sky = new THREE.Mesh(
 );
 sky.renderOrder = -2;
 scene.add(sky);
+// Горы на горизонте: панорама зимнего Токинского Становика (assets/mountains-toko.jpg, 4:1) на дуге вокруг камеры —
+// как и небо, едут вместе с камерой, поэтому всегда стоят на горизонте. Низ картинки (облака) уходит под море облаков,
+// верх растворяется в небе, сами горы чуть тонут в дымке. Когда камера ныряет под облака — гаснут
+const mountMat = new THREE.ShaderMaterial({
+  uniforms: {
+    tMap: { value: new THREE.TextureLoader().load('../assets/mountains-toko.jpg') },
+    uFogColor: { value: new THREE.Vector3(...FOG) }, uVis: { value: 1 },
+  },
+  vertexShader: `varying vec2 vUv; varying float vY; void main() { vUv = uv; vY = position.y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`,
+  fragmentShader: `
+    uniform sampler2D tMap;
+    uniform vec3 uFogColor;
+    uniform float uVis;
+    varying vec2 vUv;
+    varying float vY;
+    void main() {
+      vec3 col = texture2D(tMap, vUv).rgb;
+      col = mix(col, uFogColor, .3);                                         // воздушная перспектива: горы далеко
+      float a = smoothstep(1., .82, vUv.y) * smoothstep(0., .25, vUv.y);     // верх — в небо, низ — в облака
+      a *= smoothstep(0., .08, vUv.x) * smoothstep(1., .92, vUv.x);          // края дуги
+      a *= smoothstep(-3., 11., vY);                                         // подножие долго тает в дымке над морем облаков — без шва
+      col = mix(col, uFogColor, smoothstep(10., -1., vY) * .45);            // и ниже светлеет до цвета дымки
+      gl_FragColor = vec4(col, a * uVis);
+    }`,
+  transparent: true, depthWrite: false, side: THREE.DoubleSide,           // ели ближе — закрывают горы
+});
+{
+  const R = 300, ARC = THREE.MathUtils.degToRad(150);                      // дуга шире кадра — с запасом на покачивание камеры
+  const Hh = R * ARC / 4 * .6;                                             // по пропорции 4:1, но ниже — горы далеко, у самого горизонта
+  const geo = new THREE.CylinderGeometry(R, R, Hh, 96, 1, true, Math.PI - ARC / 2, ARC);
+  // на уровне глаз — облака под горами, примерно середина картинки: горы целиком поднимаются над морем облаков
+  // (центр дуги поднят на долю высоты картинки; больше — горы выше)
+  geo.translate(0, Hh * -.01, 0);
+  const mountains = new THREE.Mesh(geo, mountMat);
+  mountains.scale.x = -1;                                                  // изнутри цилиндра картинка зеркальна — разворачиваем
+  mountains.renderOrder = -1.5;
+  sky.add(mountains);
+}
 const camera = new THREE.PerspectiveCamera(38, 1, .1, 400);
 
 // Море облаков: огромная плоскость с шумом. Глубину не пишет — клубы ложатся поверх без резких срезов
@@ -268,58 +316,162 @@ deck.position.y = -.4;
 deck.renderOrder = -1;
 scene.add(deck);
 
-// Условная ель: ярусы-конусы, сужающиеся к верхушке. Это заглушка под фото или 3D-модель.
-// Свет простой, грани плоские; у основания ель растворяется в облаках, вдали — в дымке
+// Ветер: ель гнётся целиком — чем выше, тем сильнее (верхушка отклоняется больше), качание медленное
+// с порывами; у каждой ели своя фаза (по её месту), поэтому лес качается не в ногу
+const WIND_GLSL = `
+  uniform float uTime;
+  float windGust(vec3 w) {
+    vec2 o = modelMatrix[3].xz;                                      // где стоит ель
+    float ph = o.x * .37 + o.y * .23;
+    return .6 + .4 * sin(uTime * .23 + ph * .5) * sin(uTime * .11 + ph);   // то тише, то сильнее
+  }
+  vec3 wind(vec3 w) {
+    vec2 o = modelMatrix[3].xz;
+    float ph = o.x * .37 + o.y * .23;
+    float h = max(w.y + 6., 0.) / 16.;                               // доля высоты от основания
+    float bend = h * h * windGust(w);
+    float sway = .55 + .45 * sin(uTime * .8 + ph) + .18 * sin(uTime * 2.1 + ph * 1.7);
+    return vec3(.42, 0., .14) * bend * sway + vec3(0., 0., .08) * bend * sin(uTime * 1.3 + ph * 2.3);
+  }`;
+// Ель: тонкий ствол и сотни лап. Каждая лапа — две скрещённые плоскости, на которых шейдер рисует ветку
+// с хвоей (рваный край, просветы); лапы растут вразброс и кучками, нижние длиннее и свисают, к верхушке — короче.
+// Силуэт узкий и неровный, как у таёжной ели. У основания ель растворяется в облаках, вдали — в дымке
 const treeMat = new THREE.ShaderMaterial({
   uniforms: {
-    uColor: { value: new THREE.Vector3(.2, .25, .29) },
+    uColor: { value: new THREE.Vector3(.15, .2, .2) },
+    uTip: { value: new THREE.Vector3(.27, .33, .33) },
     uCloud: { value: new THREE.Vector3(.93, .945, .955) },
     uFogColor: { value: new THREE.Vector3(...FOG) },
+    uTime: { value: 0 },
   },
   vertexShader: `
-    varying vec3 vWorld;
-    varying float vDist;
+    ${WIND_GLSL}
+    attribute vec2 aBranch;                                           // x — доля по лапе (0 у ствола), y — поперёк (−1…1)
+    attribute float aShade, aSeed;                                    // затенённость (внутри кроны темнее) и случайное число
+    varying vec3 vWorld, vNormal;
+    varying vec2 vBranch;
+    varying float vShade, vSeed, vDist;
     void main() {
       vec4 w = modelMatrix * vec4(position, 1.);
+      w.xyz += wind(w.xyz);
+      // кончики лап ещё и подрагивают сами по себе
+      w.xyz += vec3(.6, .3, .4) * sin(uTime * 3.1 + aSeed * 40. + w.y) * .035 * aBranch.x * windGust(w.xyz);
       vWorld = w.xyz;
+      vNormal = normalize(mat3(modelMatrix) * normal);
+      vBranch = aBranch; vShade = aShade; vSeed = aSeed;
       vec4 mv = viewMatrix * w;
       vDist = -mv.z;
       gl_Position = projectionMatrix * mv;
     }`,
   fragmentShader: `
-    uniform vec3 uColor, uCloud, uFogColor;
-    varying vec3 vWorld;
-    varying float vDist;
+    uniform vec3 uColor, uTip, uCloud, uFogColor;
+    varying vec3 vWorld, vNormal;
+    varying vec2 vBranch;
+    varying float vShade, vSeed, vDist;
+    float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
     void main() {
       if (vWorld.y < -.2) discard;                                      // под облаками ели не видно
-      vec3 n = normalize(cross(dFdx(vWorld), dFdy(vWorld)));
-      float diff = .62 + .38 * max(dot(n, normalize(vec3(-.6, .7, .4))), 0.);
-      vec3 col = uColor * diff;
+      float u = vBranch.x, v = abs(vBranch.y);
+      // ветка: к концу сужается; по бокам — веточки ёлочкой, между ними просветы; край рваный
+      float width = pow(1. - u, .55) * .95 + .05;
+      float twig = fract(u * 9. + v * 1.6 + vSeed * 7.);
+      float gaps = smoothstep(.0, .25, twig) * smoothstep(1., .7, twig);
+      float rag = hash(floor(vec2(u * 46., v * 14.) + vSeed * 31.));
+      float edge = width * (.62 + .38 * gaps) * (.78 + .3 * rag);
+      if (v > edge || u > .985 - rag * .08) discard;
+      // цвет: у ствола и снизу кроны темнее, к кончикам светлее; свет сверху-слева
+      vec3 n = normalize(vNormal);
+      float diff = .55 + .45 * abs(dot(n, normalize(vec3(-.6, .75, .4))));
+      vec3 col = mix(uColor, uTip, smoothstep(.15, .95, u) * (.6 + .4 * rag));
+      col *= diff * mix(.62, 1., vShade);
+      // немного снега: пятнами на верхней стороне лап, больше ближе к оси ветки и на освещённых, у ствола — нет
+      float up = abs(n.y);
+      float spots = hash(floor(vec2(u * 7., vSeed * 13.))) * .6 + hash(floor(vec2(u * 22., v * 4.) + vSeed * 17.)) * .4;
+      float snow = smoothstep(.4, .8, up) * smoothstep(.5, .68, spots) * smoothstep(.15, .35, u) * (1. - v / max(edge, .01) * .6) * vShade;
+      col = mix(col, vec3(.93, .95, .97), clamp(snow, 0., 1.) * .85);
       col = mix(col, uCloud, smoothstep(3.2, -.4, vWorld.y));          // уходит в облака
       col = mix(col, uFogColor, smoothstep(6., 190., vDist) * .92);   // воздушная перспектива
+      gl_FragColor = vec4(col, 1.);
+    }`,
+  side: THREE.DoubleSide,
+});
+const trunkMat = new THREE.ShaderMaterial({
+  uniforms: treeMat.uniforms,
+  vertexShader: `
+    ${WIND_GLSL}
+    varying vec3 vWorld; varying float vDist;
+    void main() { vec4 w = modelMatrix * vec4(position, 1.); w.xyz += wind(w.xyz); vWorld = w.xyz; vec4 mv = viewMatrix * w; vDist = -mv.z; gl_Position = projectionMatrix * mv; }`,
+  fragmentShader: `
+    uniform vec3 uColor, uCloud, uFogColor;
+    varying vec3 vWorld; varying float vDist;
+    void main() {
+      if (vWorld.y < -.2) discard;
+      vec3 col = uColor * .55;
+      col = mix(col, uCloud, smoothstep(3.2, -.4, vWorld.y));
+      col = mix(col, uFogColor, smoothstep(6., 190., vDist) * .92);
       gl_FragColor = vec4(col, 1.);
     }`,
 });
 function makeTree(x, z, top, seed) {
   const g = new THREE.Group();
   const base = -6, H = top - base;
-  const tiers = 10;
   const rnd = n => { const s = Math.sin(seed * 12.9898 + n * 78.233) * 43758.5453; return s - Math.floor(s); };
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(.12, .3, H * .8, 6), treeMat);
-  trunk.position.y = base + H * .4;
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(.04, .22, H - 1.2, 5), trunkMat);   // ствол прячется под верхушкой
+  trunk.position.y = base + (H - 1.2) / 2;
   g.add(trunk);
-  for (let i = 0; i < tiers; i++) {
-    const f = i / (tiers - 1);
-    const h = H * .17 * (1 - f * .3);
-    const r = Math.pow(1 - f, 1.15) * H * .11 + .35;
-    const cone = new THREE.Mesh(new THREE.ConeGeometry(r, h, 7), treeMat);
-    const yc = base + H * .22 + f * (H - h / 2 - H * .22);
-    cone.position.set((rnd(i) - .5) * .3, yc, (rnd(i + 9) - .5) * .3);
-    cone.rotation.set((rnd(i + 3) - .5) * .14, rnd(i + 5) * Math.PI, (rnd(i + 7) - .5) * .14);
-    g.add(cone);
+  const pos = [], nor = [], br = [], shade = [], sd = [], idx = [];
+  const up = new THREE.Vector3(0, 1, 0), A = new THREE.Vector3(), S = new THREE.Vector3(), N = new THREE.Vector3();
+  const P0 = new THREE.Vector3(), P1 = new THREE.Vector3(), T = new THREE.Vector3();
+  let k = 0;
+  // одна плоскость лапы: от точки на стволе до кончика, шириной w, развёрнута вокруг оси лапы на угол roll
+  const card = (p0, p1, w, roll, sh, s) => {
+    A.subVectors(p1, p0).normalize();
+    S.crossVectors(A, up).normalize();
+    N.crossVectors(S, A).normalize();
+    S.multiplyScalar(Math.cos(roll)).addScaledVector(N, Math.sin(roll));
+    N.crossVectors(S, A).normalize();
+    const c = [[p0, -1, 0], [p0, 1, 0], [p1, -1, 1], [p1, 1, 1]];
+    for (const [p, side, u] of c) {
+      T.copy(p).addScaledVector(S, side * w * .5);
+      pos.push(T.x, T.y, T.z); nor.push(N.x, N.y, N.z);
+      br.push(u, side); shade.push(sh); sd.push(s);
+    }
+    idx.push(k, k + 2, k + 1, k + 1, k + 2, k + 3);
+    k += 4;
+  };
+  // лапы — не ровными ярусами, а вразброс по высоте (золотой угол по кругу), разной длины и кучками:
+  // так силуэт неровный, с выступами и провалами, как у живой ели
+  const count = Math.round(220 + H * 16);
+  for (let i = 0; i < count; i++) {
+    const f = Math.min(1, (i + rnd(i * 1.3)) / count);                // 0 — низ кроны, 1 — верхушка
+    const y = base + H * .16 + f * H * .82;
+    const a = i * 2.39996 + (rnd(i * 2.7) - .5) * .8;
+    // кучки: длина лапы зависит от плавного «шума» по высоте и направлению
+    const clump = .72 + .38 * (.5 + .5 * Math.sin(a * 2. + y * .9 + seed)) * (.5 + .5 * Math.sin(y * 2.3 - a + seed * 3.));
+    const R = H * .16 * Math.pow(1 - f, 1.05) + .28;
+    const L = R * clump * (.65 + .55 * rnd(i * 5.1));
+    // нижние лапы свисают, средние почти горизонтальны, у верхушки смотрят вверх
+    const droop = (.42 - .5 * f + (rnd(i * 3.3) - .5) * .2) * L;
+    P0.set(Math.cos(a) * .05, y, Math.sin(a) * .05);
+    P1.set(Math.cos(a) * L, y - droop, Math.sin(a) * L);
+    const w = L * (.5 + .25 * rnd(i * 11.3)) + .1;
+    const sh = Math.min(1, .3 + .6 * f + .45 * (L / (R + .01) - .6) + .15 * rnd(i * 17.7));   // короткие (внутренние) лапы в тени
+    card(P0, P1, w, (rnd(i * 19.1) - .5) * .6, Math.max(.15, sh), rnd(i * 23.9));
+    card(P0, P1, w * .65, 1.2 + (rnd(i * 29.3) - .5) * .5, Math.max(.15, sh * .9), rnd(i * 31.7));
   }
+  // верхушка — короткий шпиль из пары плоскостей
+  P0.set(0, top - .6, 0); P1.set(0, top + .25, 0);
+  card(P0, P1, .22, 0, 1, rnd(99)); card(P0, P1, .22, Math.PI / 2, 1, rnd(98));
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  geo.setAttribute('aBranch', new THREE.Float32BufferAttribute(br, 2));
+  geo.setAttribute('aShade', new THREE.Float32BufferAttribute(shade, 1));
+  geo.setAttribute('aSeed', new THREE.Float32BufferAttribute(sd, 1));
+  geo.setIndex(idx);
+  g.add(new THREE.Mesh(geo, treeMat));
   g.position.set(x, 0, z);
-  g.rotation.z = (rnd(20) - .5) * .05;
+  g.rotation.set((rnd(21) - .5) * .03, rnd(22) * Math.PI * 2, (rnd(20) - .5) * .05);
   scene.add(g);
 }
 // [x, z, высота верхушки над облаками]. Камера стоит на x = 0 и смотрит прямо вперёд.
@@ -520,39 +672,10 @@ function updateWisps(time) {
   wSeed.needsUpdate = wAlpha.needsUpdate = true;
 }
 
-// ── Разрез: земля глубоко под облаками, в той же сцене. Камера опускается к нему сквозь те же клубы ──
-const MINE_W = 210, MINE_H = 140;     // пропорции фото 3:2
-const mineTex = new THREE.TextureLoader().setCrossOrigin('anonymous').load(IMG_MINE);
-mineTex.anisotropy = 8;
-const groundMat = new THREE.ShaderMaterial({
-  uniforms: {
-    tMine: { value: mineTex }, uHaze: { value: 1 },
-    uHazeColor: { value: new THREE.Vector3(...BELOW) }, uEdge: { value: new THREE.Vector3(...BELOW) },
-  },
-  vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`,
-  fragmentShader: `
-    uniform sampler2D tMine;
-    uniform float uHaze;
-    uniform vec3 uHazeColor, uEdge;
-    varying vec2 vUv;
-    void main() {
-      // плоскость в 3 раза больше фото: фото в центре, вокруг — сумрачная земля без видимой рамки
-      vec2 uv = (vUv - .5) * 3. + .5;
-      vec3 col = texture2D(tMine, clamp(uv, 0., 1.)).rgb;
-      float lum = dot(col, vec3(.299, .587, .114));
-      col = mix(vec3(lum), col, .8) * vec3(.92, .92, .9);
-      float e = min(min(uv.x, 1. - uv.x), min(uv.y, 1. - uv.y));
-      col = mix(uEdge, col, smoothstep(-.02, .14, e));
-      // пока камера в облаках, земля скрыта дымкой
-      col = mix(col, uHazeColor, uHaze);
-      gl_FragColor = vec4(col, 1.);
-    }`,
-});
+// ── Под облаками: земли нет — там ровная белая заливка (div .whiteout) с изолиниями. Высота и размер «площадки»
+// остались только для пути камеры: внизу она смотрит вниз, как раньше над разрезом ──
+const MINE_W = 210, MINE_H = 140;
 const GROUND_Y = -300;
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(MINE_W * 3, MINE_H * 3), groundMat);
-ground.rotation.x = -Math.PI / 2;
-ground.position.set(0, GROUND_Y, 30);
-scene.add(ground);
 
 // ── Размеры ──
 function resize() {
@@ -631,29 +754,46 @@ function placeCamera(p, time) {
   sky.position.copy(camPos);
 }
 
-// ── Экраны из точек (общий приём из shared/elga.js), в светлом концепте — тёмные точки на белом ──
-const miningScreen = ElgaPoints.screen(THREE, {
-  section: document.getElementById('miningSec'), stage: document.getElementById('miningStage'),
-  caption: document.getElementById('capMining'),
-  source: { type: 'image', src: window.BELAZ_SRC || '../assets/belaz.webp' },
-  palette: 'light', layout: 'right',
-});
-const scaleScreen = ElgaPoints.screen(THREE, {
-  section: document.getElementById('scaleSec'), stage: document.getElementById('scaleStage'),
-  source: { type: 'video', src: VIDEO_SRC, clip: [47, 70] },
-  palette: 'light', layout: 'center',
-});
-
 const capHero = document.getElementById('capHero');
-const capIntro = document.getElementById('capIntro');
-const capMine = document.getElementById('capMine');
-const scrim = document.getElementById('scrim');
+const whiteout = document.getElementById('whiteout');
+// преимущества: блок едет вверх вместе со скроллом (один к одному) и встаёт по центру экрана по высоте
+const perksBox = document.getElementById('perks');
+const PERKS_STOP = .84;                                    // доля пролога, на которой блок встал на место
+function movePerks(vh, sy) {
+  const stopPx = PERKS_STOP * (story.offsetHeight - vh);
+  const y = (vh - perksBox.offsetHeight) / 2 + Math.max(0, stopPx - sy);
+  perksBox.style.transform = `translateY(${Math.min(vh * 1.2, y)}px)`;
+}
+// Изолинии: каждая линия — <path> с длиной, приведённой к 1, поэтому прорисовка — это сдвиг штриха.
+// Рисуются справа налево: каждая линия — от своего правого конца, и чем правее линия, тем раньше начинает;
+// левые (рядом с текстом) — последними, когда блок с текстом уже встал. При прокрутке назад стираются обратно
+const maplines = [];
+{
+  const svg = document.getElementById('maplines'), ns = 'http://www.w3.org/2000/svg';
+  let s = 11;
+  const r = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+  (window.ELGA_MAPLINES ? ELGA_MAPLINES.paths : []).forEach(d => {
+    const el = document.createElementNS(ns, 'path');
+    el.setAttribute('d', d); el.setAttribute('pathLength', '1');
+    el.style.strokeDasharray = '1 1'; el.style.strokeDashoffset = '1';
+    svg.appendChild(el);
+    const n = d.match(/-?\d+(\.\d+)?/g).map(Number);
+    const x0 = n[0], x1 = n[n.length - 2];
+    const right = Math.max(x0, x1) / ELGA_MAPLINES.width;
+    maplines.push({ el, fromEnd: x1 > x0, delay: (1 - right) * .5 + r() * .08, last: -1 });
+  });
+}
+function drawMaplines(t) {                                  // t: 0 — линий нет, 1 — все прорисованы
+  for (const m of maplines) {
+    const k = Math.min(1, Math.max(0, (t * 1.6 - m.delay) / 1.0));
+    // от начала линии — сдвиг 1→0; от конца — −1→0
+    const off = Math.round((m.fromEnd ? k - 1 : 1 - k) * 1000) / 1000;
+    if (off !== m.last) { m.el.style.strokeDashoffset = off; m.last = off; }
+  }
+}
 const header = document.getElementById('header');
-const route = document.getElementById('route');
 const hint = document.getElementById('hint');
-const routeFill = document.getElementById('routeFill');
-const routeKm = document.getElementById('routeKm');
-const setLight = on => [header, route, hint].forEach(el => el.classList.toggle('light', on));
+const setLight = on => [header, hint].forEach(el => el.classList.toggle('light', on));
 
 let ping = 0, lastT = 0;
 function frame(tms) {
@@ -689,10 +829,11 @@ function frame(tms) {
     wispMat.uniforms.uWind.value = 1 - sm(.3, .44, p);
     puffMat.uniforms.uTime.value = time;
     deckMat.uniforms.uTime.value = time;
+    treeMat.uniforms.uTime.value = time;
     puffMat.uniforms.tTrail.value = dst.texture;
-    groundMat.uniforms.uHaze.value = 1 - sm(.5, .8, p);
     // «пол» облаков растворяется, когда камера к нему подлетает, — дальше видны только клубы
     deckMat.uniforms.uOpacity.value = sm(-.5, 5, camera.position.y);
+    mountMat.uniforms.uVis.value = sm(.5, 4, camera.position.y);   // под облаками гор не видно
     renderer.render(scene, camera);
   }
 
@@ -700,19 +841,13 @@ function frame(tms) {
   // Второй текст поднимается снизу, пока первый ещё на экране
   const vh = window.innerHeight, sy = window.scrollY;
   capHero.style.transform = `translateY(${vh * .3 - sy}px)`;
-  capIntro.style.transform = `translateY(${vh * 1.02 - sy}px)`;
-  capMine.style.transform = `translateY(${(1 - sm(.7, .86, p)) * vh}px)`;
-  scrim.style.opacity = sm(.72, .86, p);
+  whiteout.style.opacity = sm(.58, .7, p);                 // сквозь облака — в ровный белый
+  const lines = sm(.7, .97, p);                            // облака ушли с экрана — линии прорисовываются вместе со скроллом
+  drawMaplines(lines);
+  movePerks(vh, sy);                                       // блок преимуществ приезжает со скроллом
 
-  setLight(p > .66);                     // над разрезом фон тёмный — шапка светлая
+  setLight(false);                       // фон везде светлый — шапка тёмная
   hint.style.opacity = 1 - sm(0, .03, p);
-  routeFill.style.height = `${p * 100}%`;
-  routeKm.innerHTML = Elga.get(p > .6 ? 'mine.route' : 'hero.route');
-
-  // 4. Экраны из точек; пока белый экран под шапкой — шапка тёмная
-  const mouse = { x: smx, y: smy };
-  if (miningScreen.render(time, dt, mouse)) { setLight(false); routeKm.innerHTML = Elga.get('mining.route'); }
-  if (scaleScreen.render(time, dt, mouse)) { setLight(false); routeKm.innerHTML = Elga.get('scale.route'); }
 
   requestAnimationFrame(frame);
 }
