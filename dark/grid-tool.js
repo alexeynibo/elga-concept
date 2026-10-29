@@ -95,7 +95,7 @@
   let geo = null;
   function measure() {
     const W = innerWidth, H = innerHeight;
-    const side = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--side')) || 120;
+    const side = Math.max(120, (W - 1680) / 2);                      // как --side в стилях: шире 1920 контент 1680 px по центру
     const x0 = W <= 760 ? 16 : side, cw = (W - 2 * x0) / IN_COLS;
     geo = { xs: x0 - EXTRA * cw, cw, ch: H / ROWS };
     const [br, bc] = rc(BTN_CELL);

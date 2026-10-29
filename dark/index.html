@@ -16,6 +16,10 @@
     --ink-dark: #1d2a33;
     --ink-dark-dim: rgba(29, 42, 51, .6);
     --bg: #0d1013;
+    /* поля: 120 px; на экранах шире 1920 контент остаётся шириной 1680 px и встаёт по центру, фон — на весь экран */
+    --side: max(120px, calc((100vw - 1680px) / 2));
+    /* линия, с которой начинаются тексты справа («Дорога», «Мир») — линия сетки на 4/7 ширины контента */
+    --right-col: calc(var(--side) + (100vw - 2 * var(--side)) * 4 / 7);
   }
 
   /* Пролог: камера на дне разреза, поднимается к поверхности; звёзды слетаются в видео с самосвалом */
@@ -36,10 +40,8 @@
   /* блок с самосвалом — как первый экран: заголовок и описание; описание подъезжает отдельно */
   .caption--mining { max-width: 56%; z-index: 6; }
   .caption--mining .caption__sub, .caption--enrich .caption__sub { will-change: transform; }
-  /* следующий блок — так же, только в правой части экрана */
-  .caption--enrich { left: auto; right: var(--side); max-width: 54%; z-index: 6; }
-  /* текст у шара — только в правой части: шар занимает левую половину (центр на левой трети) */
-  .caption--world { left: 54%; max-width: none; }
+  /* блоки справа («Дорога», «Мир») — с одной опорной линии: линия сетки на 4/7 ширины контента */
+  .caption--enrich, .caption--world { left: var(--right-col); right: var(--side); max-width: none; z-index: 6; }
   /* мягкое затемнение слева — текст читается поверх бликов на стене */
   .text-scrim {
     position: absolute; inset: 0; z-index: 4; pointer-events: none;
@@ -51,15 +53,26 @@
   /* табло — холст, поэтому отменяем правило «холст сцены на весь экран» */
   .facts[data-led="scroll"] .led { position: static; width: 84px; height: 84px; }
   .facts[data-led="scroll"] .fact__text { flex: 0 1 380px; text-align: left; }
+  .facts[data-led="scroll"] .fact { justify-content: flex-start; }   /* текст сразу за табло, а не у правого края ячейки */
   /* рамки ячеек — один общий слой; прозрачность у слоя целиком, поэтому в пересечениях линии не темнеют.
      Линия лежит ровно на границе ячейки — у соседних по диагонали ячеек стыки совпадают */
-  .facts[data-led="scroll"] { position: relative; grid-auto-rows: 250px; width: 100%; }   /* по ширине контента — от поля до поля */   /* ячейки выше общих 160 px: +30%, потом ещё +20% */
+  .facts[data-led="scroll"] { position: relative; grid-auto-rows: 250px; width: 100%; }   /* по ширине контента; ячейки выше общих 160 px */
   .facts[data-led="scroll"] .fact { outline: none; }
   .facts__frames { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; opacity: .32; }
   .facts__frames rect { fill: none; stroke: currentColor; stroke-width: 1; }
   /* крестики 12 px на углах ячеек — ярче обводки; тоже общий слой, чтобы на общих углах не складывались */
   .facts__marks { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; opacity: .55; }
   .facts__marks path { fill: none; stroke: currentColor; stroke-width: 1; }
+
+  /* большие экраны (около 1920): заголовки, логотип и меню крупнее на 30 %, простой текст — как есть;
+     поля в ячейках фактоидов шире */
+  @media (min-width: 1800px) {
+    :root { --title-size: 65px; --accent-size: 40px; }
+    .logo__svg { height: 29px; }
+    .header { font-size: 17px; }
+    .menu { gap: 42px; }
+    .facts[data-led="scroll"] .fact { padding: 32px 64px; }
+  }
 
   @media (max-width: 760px) {
     .caption--hero { max-width: none; }
