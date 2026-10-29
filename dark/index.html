@@ -1,0 +1,1036 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Эльга — тёмный концепт</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400..900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../shared/base.css">
+<style>
+  /* Цвета тёмного концепта */
+  :root {
+    --ink: #f4f6f8;
+    --ink-dim: rgba(244, 246, 248, .62);
+    --ink-dark: #1d2a33;
+    --ink-dark-dim: rgba(29, 42, 51, .6);
+    --bg: #0d1013;
+  }
+
+  /* Пролог: камера на дне разреза, поднимается к поверхности; звёзды слетаются в видео с самосвалом */
+  .story { height: 1100vh; position: relative; background: #05070b; }
+  .stage { position: sticky; top: 0; height: 100vh; overflow: hidden; }
+  .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .story .caption { color: var(--ink); }
+  .caption--hero { max-width: 56%; }
+  /* логотип в шапке — векторный, цвета шапки */
+  .logo { display: block; line-height: 0; color: inherit; }
+  .logo__svg { height: 22px; width: auto; display: block; }
+  /* выделенные части заголовков («открытым способом», «Собственная», «Собственный») — всегда отдельной строкой,
+     не переносятся и набраны мельче основного заголовка; остальной заголовок — как был */
+  :root { --accent-size: 31px; --accent-lh: 1.31; --accent-ls: .07em;
+          --accent-font: 'Activist', 'Golos Text', sans-serif; --accent-case: none; }
+  .t-accent { display: block; white-space: nowrap; font-family: var(--accent-font); font-size: var(--accent-size);
+              line-height: var(--accent-lh); letter-spacing: var(--accent-ls); text-transform: var(--accent-case); }
+  /* блок с самосвалом — как первый экран: заголовок и описание; описание подъезжает отдельно */
+  .caption--mining { max-width: 56%; z-index: 6; }
+  .caption--mining .caption__sub, .caption--enrich .caption__sub { will-change: transform; }
+  /* следующий блок — так же, только в правой части экрана */
+  .caption--enrich { left: auto; right: var(--side); max-width: 54%; z-index: 6; }
+  /* текст у шара — только в правой части: шар занимает левую половину (центр на левой трети) */
+  .caption--world { left: 54%; max-width: none; }
+  /* мягкое затемнение слева — текст читается поверх бликов на стене */
+  .text-scrim {
+    position: absolute; inset: 0; z-index: 4; pointer-events: none;
+    background: linear-gradient(90deg, rgba(5, 7, 11, .7) 0%, rgba(5, 7, 11, .35) 35%, rgba(5, 7, 11, 0) 60%);
+  }
+
+  /* Фактоиды: табло крупнее (знак в нём меньше), текст справа от табло с выключкой влево —
+     колонка текста одной ширины, поэтому все строки начинаются с одной вертикали */
+  /* табло — холст, поэтому отменяем правило «холст сцены на весь экран» */
+  .facts[data-led="scroll"] .led { position: static; width: 84px; height: 84px; }
+  .facts[data-led="scroll"] .fact__text { flex: 0 1 380px; text-align: left; }
+  /* рамки ячеек — один общий слой; прозрачность у слоя целиком, поэтому в пересечениях линии не темнеют.
+     Линия лежит ровно на границе ячейки — у соседних по диагонали ячеек стыки совпадают */
+  .facts[data-led="scroll"] { position: relative; grid-auto-rows: 250px; width: 100%; }   /* по ширине контента — от поля до поля */   /* ячейки выше общих 160 px: +30%, потом ещё +20% */
+  .facts[data-led="scroll"] .fact { outline: none; }
+  .facts__frames { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; opacity: .32; }
+  .facts__frames rect { fill: none; stroke: currentColor; stroke-width: 1; }
+  /* крестики 12 px на углах ячеек — ярче обводки; тоже общий слой, чтобы на общих углах не складывались */
+  .facts__marks { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; opacity: .55; }
+  .facts__marks path { fill: none; stroke: currentColor; stroke-width: 1; }
+
+  @media (max-width: 760px) {
+    .caption--hero { max-width: none; }
+    .caption--enrich, .caption--world { left: 16px; max-width: none; }
+    .facts[data-led="scroll"] .led { width: 52px; height: 52px; }
+    .facts[data-led="scroll"] .fact__text { flex: none; }
+    .facts[data-led="scroll"] { grid-auto-rows: 234px; }
+  }
+</style>
+<script type="importmap">
+  { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+
+<header class="header light" id="header">
+  <a class="logo" href="#" aria-label="Эльга"><svg class="logo__svg" role="img" aria-label="Эльга" fill="currentColor" viewBox="0 0 341.91 109.96" xmlns="http://www.w3.org/2000/svg"><path d="m93.86 16.1c-10.38-10.38-24.19-16.1-38.88-16.1s-28.49 5.72-38.88 16.1c-10.38 10.39-16.1 24.2-16.1 38.88s5.72 28.49 16.1 38.88c10.39 10.39 24.19 16.1 38.88 16.1s28.49-5.72 38.88-16.1 16.1-24.19 16.1-38.88-5.72-28.49-16.1-38.88zm-75.33 68.19c0 1.2-1.52 1.72-2.26.77-6.68-8.56-10.31-19.04-10.31-30.08s3.62-21.51 10.31-30.08c.74-.95 2.26-.44 2.26.77zm66.53 9.4c-8.56 6.68-19.04 10.31-30.08 10.31s-21.51-3.62-30.08-10.31c-.95-.74-.44-2.26.77-2.26h58.62c1.2 0 1.72 1.52.77 2.26zm-60.62-8.16v-61.09h60.99v61.09zm59.85-67h-58.62c-1.2 0-1.72-1.52-.77-2.26 8.56-6.68 19.04-10.31 30.08-10.31s21.51 3.62 30.08 10.31c.95.74.44 2.26-.77 2.26zm9.4 66.52c-.74.95-2.26.44-2.26-.77v-58.61c0-1.2 1.52-1.72 2.26-.77 6.68 8.56 10.31 19.04 10.31 30.08s-3.62 21.51-10.31 30.08z"/><path d="m55.08 45.62c-5.33 0-9.65 4.32-9.65 9.65s4.32 9.65 9.65 9.65 9.65-4.32 9.65-9.65-4.32-9.65-9.65-9.65z"/><path d="m176.61 80.27v9.84h-39.46v-70.26h39.46v9.84h-28.93v19.09h21.25v9.84h-21.25v21.65z"/><path d="m231.31 80.27v9.84h-41.23v-70.26h10.53v60.41h30.7z"/><path d="m262.11 18.58c13.19 0 19.38 7.77 21.84 19.88h-10.53c-1.97-6.89-5.22-9.74-11.81-9.74-10.53 0-14.17 9.84-14.17 26.27s3.64 26.27 14.17 26.27c11.32 0 12.79-8.66 12.79-18.6v-.98h-15.94v-9.84h26.57v7.97c0 19.88-6.69 31.59-22.93 31.59-18.2 0-25.39-14.86-25.39-36.41s7.18-36.41 25.39-36.41z"/><path d="m327.44 69.25h-19.88l-3.84 20.86h-10.33l13.97-70.25h20.47l14.07 70.25h-10.53l-3.94-20.86zm-18.01-9.84h16.14l-5.31-28.73h-5.41l-5.41 28.73z"/></svg></a>
+  <nav class="menu" data-c="nav"></nav>
+</header>
+
+
+<div class="hint light" id="hint" data-c="hint"></div>
+
+<!-- Пролог: подъём со дна угольного разреза к звёздному небу -->
+<section class="story" id="story">
+  <div class="stage" id="stage">
+    <div class="nogl" id="nogl">Браузер не&nbsp;поддерживает WebGL&nbsp;— сцена недоступна.</div>
+    <div class="text-scrim"></div>
+    <div class="caption caption--hero" id="capHero">
+      <h1 class="caption__title" data-c="hero.title"></h1>
+      <p class="caption__sub" data-c="hero.subtitle"></p>
+    </div>
+    <div class="caption caption--intro" id="capIntro">
+      <div class="facts" data-facts="intro.facts" data-led="scroll"></div>
+    </div>
+    <!-- Добыча: появляется, когда звёзды собрались в видео с самосвалом -->
+    <div class="caption caption--mining" id="capMining">
+      <h2 class="caption__title" data-c="mining.title"></h2>
+      <p class="caption__sub" id="capMiningSub" data-c="mining.subtitle"></p>
+    </div>
+    <!-- Обогащение: справа; выезжает, когда «Добыча» почти уехала; самосвал в это время разбирается и собирается в следующее видео -->
+    <div class="caption caption--enrich" id="capEnrich">
+      <h2 class="caption__title" data-c="road.title"></h2>
+      <p class="caption__sub" id="capEnrichSub" data-c="road.subtitle"></p>
+    </div>
+    <!-- Порт: слева; выезжает, когда «Обогащение» почти уехало; точки гаснут, из темноты проступает 3D-модель порта -->
+    <div class="caption caption--mining" id="capPort">
+      <h2 class="caption__title" data-c="port.title"></h2>
+      <p class="caption__sub" id="capPortSub" data-c="port.subtitle"></p>
+    </div>
+    <!-- Мир: справа (шар — на левой трети); выезжает, когда облачная пелена расходится -->
+    <div class="caption caption--enrich caption--world" id="capWorld">
+      <h2 class="caption__title" data-c="world.title"></h2>
+      <p class="caption__sub" id="capWorldSub" data-c="world.subtitle"></p>
+    </div>
+  </div>
+</section>
+
+<script src="../content/content.js"></script>
+<script src="../shared/elga.js"></script>
+<script src="port.js"></script>
+<script src="globe.js"></script>
+<!-- сетка на всех экранах, кроме первого (появляется миганием); с ?grid в адресе — номера ячеек и панель настройки -->
+<script src="grid-tool.js"></script>
+<script type="module">
+import * as THREE from 'three';
+
+Elga.bind();
+const { sm } = Elga;
+
+
+// ════════ Пролог: угольный разрез ════════
+const stage = document.getElementById('stage');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+} catch (e) {
+  document.getElementById('nogl').style.display = 'flex';
+  throw e;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+stage.prepend(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2('#18223a', .0034);          // вдали всё тонет в дымке цвета неба у горизонта
+const FOG_BLUE = new THREE.Color('#18223a'), FOG_NIGHT = new THREE.Color('#121212');   // дымка темнеет вместе с небом
+const camera = new THREE.PerspectiveCamera(50, 1, .1, 2400);
+
+// ── Шум для рельефа стен (считается на процессоре один раз) ──
+const hash = (x, y, s) => {
+  let h = (Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(s, 1442695041)) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
+};
+function smoothNoise(x, y, s) {
+  const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  const a = hash(xi, yi, s), b = hash(xi + 1, yi, s), c = hash(xi, yi + 1, s), d = hash(xi + 1, yi + 1, s);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+const fbm = (x, y, s) => { let v = 0, a = .5; for (let o = 0; o < 4; o++) { v += a * smoothNoise(x, y, s + o); x *= 2.03; y *= 2.03; a *= .5; } return v; };
+// «блоки»: ступенчатый шум без сглаживания — даёт рубленые грани, как у сколов угля
+const blocky = (x, y, s) => hash(Math.floor(x), Math.floor(y), s);
+
+// ── Стены разреза ──
+// Разрез идёт вдаль по оси z, книзу сужается. Стены слева и справа от камеры.
+// Разрез глубокий и почти отвесный: когда камера смотрит строго вверх,
+// стены долго сходятся в перспективе по бокам кадра и уходят, только когда камера выше кромки
+const H = 320;                                            // глубина разреза (по ней строится путь камеры и тайминги)
+const WALL_LOWER = 28;                                    // на сколько метров стены ниже: кромка в кадре при вылете камеры ниже
+const WALL_H = H - WALL_LOWER;                            // настоящая высота стен и уровень земли у кромки
+const halfW = y => 4.5 + 20 * Math.pow(y / H, 1.35);      // полуширина на высоте y
+function relief(y, z, s) {
+  const big = fbm(z * .02 + s * 13, y * .018, s) * 9;           // крупные выступы и ниши
+  const blocks = blocky(z * .085, y * .055 + s * 7, s + 3) * 2.6
+               + blocky(z * .21, y * .14, s + 5) * 1.1;         // рубленые грани
+  const fine = fbm(z * .3, y * .25, s + 9) * 1.1 + blocky(z * .55, y * .4, s + 11) * .35;
+  const strata = Math.sin(y * .55 + fbm(z * .05, y * .05, s) * 6) * .45;   // слоистость пласта
+  return big + blocks + fine + strata;
+}
+const wallMat = new THREE.MeshPhongMaterial({
+  color: '#0c0d10', specular: '#8a92a4', shininess: 120,   // почти чёрный уголь, мелкие острые холодные блики
+  flatShading: true, side: THREE.DoubleSide,
+});
+function makeWall(side) {
+  const Z0 = 80, Z1 = -520, SEG_Z = 520, SEG_Y = 380;     // мелкая сетка — грани размером со скол, а не с плиту
+  const geo = new THREE.PlaneGeometry(1, 1, SEG_Z, SEG_Y);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const u = pos.getX(i) + .5, v = pos.getY(i) + .5;
+    const z = Z0 + (Z1 - Z0) * u;
+    let y = v * WALL_H;
+    const s = side < 0 ? 1 : 2;
+    if (v > .999) y += fbm(z * .04, 0, s + 20) * 10;      // рваный верхний край
+    pos.setXYZ(i, side * (halfW(y) + relief(y, z, s)), y, z);
+  }
+  geo.computeVertexNormals();
+  return new THREE.Mesh(geo, wallMat);
+}
+
+const groundMat = new THREE.MeshLambertMaterial({ color: '#0b0d10' });
+// поверхность по обе стороны разреза: холмистая, из того же тёмного угля; у края разреза — ровно на уровне его кромки
+function makeTerrain(side) {
+  const W = 1400, L = 1600, x0 = side * (halfW(WALL_H) + 10 + W / 2), z0 = -400;
+  const geo = new THREE.PlaneGeometry(W, L, 160, 180);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const wx = pos.getX(i) + x0, wz = pos.getZ(i) + z0;
+    const fromEdge = Math.abs(wx) - halfW(WALL_H) - 10;
+    const hills = (fbm(wx * .004, wz * .004, 40) - .45) * 90 + fbm(wx * .03, wz * .03, 44) * 6;
+    pos.setY(i, Math.max(-6, hills) * sm(0, 220, fromEdge));
+  }
+  geo.computeVertexNormals();
+  const g = new THREE.Mesh(geo, wallMat);
+  g.position.set(x0, WALL_H + 2, z0);
+  return g;
+}
+
+// Стены, дно и поверхность — одна группа. Когда камера поднялась и подняла взгляд к небу,
+// всё это за нижним краем кадра — геометрия выгружается из памяти; если пролистать назад — строится заново
+let rock = null;
+function buildRock() {
+  if (rock) return;
+  rock = new THREE.Group();
+  rock.add(makeWall(-1), makeWall(1), makeTerrain(-1), makeTerrain(1));
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(80, 700), groundMat);    // дно — тёмное, почти не видно
+  floor.rotation.x = -Math.PI / 2; floor.position.set(0, -.5, -200);
+  rock.add(floor);
+  scene.add(rock);
+}
+function unloadRock() {
+  if (!rock) return;
+  scene.remove(rock);
+  rock.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+  rock = null;
+}
+buildRock();
+
+// ════════ Туман между стенами разреза ════════
+// Тот же приём, что облака в светлом концепте: клубы — плоскости, всегда повёрнутые к камере,
+// форма и края «дышат» по текстуре шума; курсор оставляет след, который расчищает и раздувает туман.
+// Туман негустой, гуще у дна; медленно плывёт вдоль разреза; уезжает и выгружается вместе со стенами
+
+// Текстура шума: считается один раз, бесшовная, 4 канала с разным рисунком
+function makeNoiseTexture(size = 256) {
+  const data = new Uint8Array(size * size * 4);
+  const hash = (x, y, s) => {
+    let h = (Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(s, 1442695041)) | 0;
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
+  };
+  const vnoise = (x, y, period, s) => {
+    const xi = Math.floor(x), yi = Math.floor(y);
+    const xf = x - xi, yf = y - yi;
+    const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+    const m = n => ((n % period) + period) % period;
+    const a = hash(m(xi), m(yi), s), b = hash(m(xi + 1), m(yi), s);
+    const c = hash(m(xi), m(yi + 1), s), d = hash(m(xi + 1), m(yi + 1), s);
+    return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+  };
+  for (let ch = 0; ch < 4; ch++) {
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      let val = 0, amp = .5, period = 4;
+      for (let o = 0; o < 5; o++) {
+        val += amp * vnoise(x / size * period, y / size * period, period, ch * 101 + o * 7);
+        amp *= .5; period *= 2;
+      }
+      data[(y * size + x) * 4 + ch] = Math.round(val / .97 * 255);
+    }
+  }
+  const tex = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.generateMipmaps = true;
+  tex.needsUpdate = true;
+  return tex;
+}
+const noiseTex = makeNoiseTexture();
+
+// ════════ Высотный туман в разрезе ════════
+// Туман — это не пятна, а воздух: плотность растёт к низу (экспоненциально по высоте),
+// и чем длиннее путь взгляда через нижние слои, тем сильнее всё тонет в светлой дымке.
+// Считается в шейдерах стен, земли, дна и неба; по туману медленно плывут неровности плотности,
+// курсор его расчищает. Туман привязан к разрезу и уезжает вниз вместе с ним
+const HFOG = {
+  hfCam: { value: new THREE.Vector3() },
+  hfTime: { value: 0 },
+  hfBase: { value: 0 },                                     // высота дна разреза (разрез уезжает вниз — туман с ним)
+  hfA: { value: .055 },                                     // густота у самого дна
+  hfB: { value: 1 / 22 },                                   // как быстро редеет кверху: вдвое примерно каждые 15 м
+  hfNoise: { value: noiseTex }, hfTrail: { value: null }, hfRes: { value: new THREE.Vector2(1, 1) },
+  hfLow: { value: new THREE.Color('#b9c7e6') },             // у дна туман светлый, подсвечен луной
+  hfHigh: { value: new THREE.Color('#41507a') },            // выше — темнее, сливается с ночью
+};
+const HFOG_GLSL = `
+  uniform vec3 hfCam, hfLow, hfHigh;
+  uniform float hfTime, hfBase, hfA, hfB;
+  uniform sampler2D hfNoise, hfTrail;
+  uniform vec2 hfRes;
+  // туман по ширине экрана: в центре полной силы, к левому и правому краям почти исчезает — стены видны чётко
+  float hfCenter() {
+    float x = abs(gl_FragCoord.x / hfRes.x - .5);
+    return mix(.1, 1., 1. - smoothstep(.1, .42, x));
+  }
+  // неровности плотности: два слоя шума, медленно плывут вдоль разреза
+  float hfVar(vec3 p) {
+    vec2 q = p.xz * vec2(.03, .012) + vec2(hfTime * .004, hfTime * .018);
+    float n = texture2D(hfNoise, q).r * .6 + texture2D(hfNoise, q * 2.7 + vec2(-hfTime * .01, hfTime * .006)).g * .4;
+    float v = texture2D(hfNoise, vec2(p.y * .02 - hfTime * .006, p.z * .006)).b;   // пряди по высоте
+    return .25 + 1.6 * n * (.6 + .8 * v);
+  }
+  // col — цвет точки, c — камера, dir — направление взгляда, L — расстояние, probe — где брать неровности
+  vec3 hfApply(vec3 col, vec3 c, vec3 dir, float L, vec3 probe) {
+    float yc = max(c.y - hfBase, 0.);
+    float dy = dir.y * L, k = hfB * dy;
+    float I = hfA * exp(-hfB * yc) * L * (abs(k) < 1e-3 ? 1. : (1. - exp(-k)) / k);
+    // у самого дна туман на 15% прозрачнее: вычитаем тонкую прослойку, которая сходит на нет за ~25 м
+    float b2 = hfB + 1. / 25., k2 = b2 * dy;
+    I -= .15 * hfA * exp(-b2 * yc) * L * (abs(k2) < 1e-3 ? 1. : (1. - exp(-k2)) / k2);
+    I *= hfVar(probe);
+    float tr = texture2D(hfTrail, gl_FragCoord.xy / hfRes).r;
+    float f = (1. - exp(-I)) * (1. - .8 * tr);              // курсор расчищает туман
+    f *= hfCenter();                                         // основной туман — по центру, над разрезом
+    float low = max(min(yc, yc + dy), 0.);
+    vec3 fc = mix(hfHigh, hfLow, exp(-hfB * low * .8));    // чем ниже прошёл взгляд, тем светлее дымка
+    return mix(col, fc, clamp(f, 0., .96));
+  }`;
+// подключение к стандартным материалам three.js: туман добавляется поверх обычной дымки сцены
+function withHeightFog(mat) {
+  mat.onBeforeCompile = sh => {
+    Object.assign(sh.uniforms, HFOG);
+    sh.vertexShader = 'varying vec3 vHfWorld;\n' + sh.vertexShader.replace('#include <project_vertex>',
+      '#include <project_vertex>\n  vHfWorld = (modelMatrix * vec4(transformed, 1.)).xyz;');
+    sh.fragmentShader = 'varying vec3 vHfWorld;\n' + HFOG_GLSL + '\n' + sh.fragmentShader.replace('#include <fog_fragment>',
+      `#include <fog_fragment>
+  { vec3 hv = vHfWorld - hfCam; float hl = length(hv);
+    gl_FragColor.rgb = hfApply(gl_FragColor.rgb, hfCam, hv / hl, hl, vHfWorld); }`);
+  };
+}
+withHeightFog(wallMat);
+
+// ── Фактура угля на стенах: чёрный глянцевый камень с мятым мраморным рисунком ──
+// Рисунок считается в шейдере по положению точки в мире (без картинки): «гребни» шума дают
+// светлые прожилки, а те же гребни слегка выгибают поверхность — блики ложатся по складкам, как на мятом глянце
+{
+  const fogHook = wallMat.onBeforeCompile;
+  wallMat.onBeforeCompile = sh => {
+    fogHook(sh);
+    sh.uniforms.tCoal = { value: noiseTex };
+    sh.fragmentShader = sh.fragmentShader
+      .replace('void main() {', `
+        uniform sampler2D tCoal;
+        // мятый рисунок: искривлённые гребни шума, несколько масштабов
+        float coalRidge(vec2 uv) {
+          vec2 q = uv * .022;                                        // масштаб рисунка: меньше число — крупнее
+          q += (texture2D(tCoal, uv * .0035).rg - .5) * .9;         // крупный изгиб прожилок
+          float v = 0., a = .55;
+          for (int i = 0; i < 4; i++) {
+            float n = texture2D(tCoal, q).r;
+            v += a * pow(1. - abs(2. * n - 1.), 3.);                 // тонкий светлый гребень
+            q = q * 2.13 + vec2(.37, .71); a *= .5;
+          }
+          return v;
+        }
+        void main() {`)
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        // плоскость проекции рисунка — по ориентации грани: стены — вбок, земля — сверху
+        vec3 coalN = abs(normalize(cross(dFdx(vHfWorld), dFdy(vHfWorld))));
+        // на горизонтальных (верхних) гранях рисунок в 3 раза крупнее, на боковых — как есть
+        vec2 coalUv = coalN.x > max(coalN.y, coalN.z) ? vHfWorld.zy : (coalN.y > coalN.z ? vHfWorld.xz / 3. : vHfWorld.xy);
+        float coalH = coalRidge(coalUv);
+        // почти чёрная основа, прожилки — холодный серый
+        diffuseColor.rgb = mix(vec3(.008, .009, .011), vec3(.1, .1, .11), smoothstep(.2, .75, coalH));`)
+      .replace('#include <specularmap_fragment>', `#include <specularmap_fragment>
+        specularStrength = .08 + .9 * smoothstep(.3, .8, coalH);   // блик — только на гребнях складок`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        {
+          // складки выгибают поверхность (как карта рельефа, только из того же рисунка)
+          vec3 sx = dFdx(-vViewPosition), sy = dFdy(-vViewPosition);
+          vec3 r1 = cross(sy, normal), r2 = cross(normal, sx);
+          float det = dot(sx, r1);
+          float k = 1.1;
+          vec3 g = sign(det) * (dFdx(coalH) * k * r1 + dFdy(coalH) * k * r2);
+          normal = normalize(abs(det) * normal - g);
+        }`);
+  };
+}
+withHeightFog(groundMat);
+
+// След курсора: две текстуры по очереди, старый след гаснет, новый дорисовывается
+const orthoCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+let trailRT = [];
+const trailMat = new THREE.ShaderMaterial({
+  uniforms: {
+    tPrev: { value: null }, uMouse: { value: new THREE.Vector2(.5, .5) }, uMousePrev: { value: new THREE.Vector2(.5, .5) },
+    uAspect: { value: 1 }, uForce: { value: 0 }, uDecay: { value: .96 },
+  },
+  vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }`,
+  fragmentShader: `
+    varying vec2 vUv;
+    uniform sampler2D tPrev;
+    uniform vec2 uMouse, uMousePrev;
+    uniform float uAspect, uForce, uDecay;
+    float segDist(vec2 p, vec2 a, vec2 b) {
+      vec2 pa = p - a, ba = b - a;
+      float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-6), 0., 1.);
+      return length(pa - ba * h);
+    }
+    void main() {
+      float v = texture2D(tPrev, vUv).r * uDecay;
+      vec2 asp = vec2(uAspect, 1.);
+      float d = segDist(vUv * asp, uMousePrev * asp, uMouse * asp);
+      float blob = exp(-d * d / (.45 * .45) * 3.);     // большое размытое пятно — почти половина высоты экрана, края плавно тают
+      v += blob * uForce;
+      gl_FragColor = vec4(min(v, 1.), 0., 0., 1.);
+    }`,
+  depthTest: false, depthWrite: false,
+});
+const trailScene = new THREE.Scene();
+trailScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), trailMat));
+
+// Пелена тумана: много крупных, вытянутых по горизонтали и почти прозрачных слоёв, шире самого разреза —
+// перекрываясь в глубину, они сливаются в сплошной туман, а не в отдельные облачка.
+// У дна слоёв больше и они плотнее, к кромке туман редеет
+const MIST_Z = [40, -380];                                  // полоса вдоль разреза, в которой плавают слои
+const MIST_DENSITY = .45;                                   // густота прядей поверх высотного тумана
+const mist = [];
+{
+  let s = 7;
+  const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 240; i++) {
+    const h = Math.pow(r(), 2.4);                           // 0 — дно, 1 — кромка; большинство слоёв у дна
+    const y = 1 + H * .85 * h;
+    const w = 2 * halfW(y);
+    const sx = Math.max(22, w * (1.6 + r() * 1.2));
+    mist.push({
+      x: (r() - .5) * w * .4, y, z: MIST_Z[1] + r() * (MIST_Z[0] - MIST_Z[1]),
+      sx, sy: sx * (.22 + r() * .18),
+      a: (.16 + r() * .12) * (1.8 - 1.5 * Math.sqrt(h)),   // у дна плотнее
+      seed: (i * .6180339) % 1 * 10,
+    });
+  }
+}
+const mistGeo = new THREE.PlaneGeometry(1, 1);
+const mistSeed = new THREE.InstancedBufferAttribute(new Float32Array(mist.length), 1);
+const mistAlpha = new THREE.InstancedBufferAttribute(new Float32Array(mist.length), 1);
+mistGeo.setAttribute('aSeed', mistSeed);
+mistGeo.setAttribute('aAlpha', mistAlpha);
+const mistMat = new THREE.ShaderMaterial({
+  uniforms: {
+    tNoise: { value: noiseTex }, tTrail: { value: null },
+    uTime: { value: 0 }, uRes: { value: new THREE.Vector2(1, 1) },
+    uLight: { value: new THREE.Color('#cdd9f0') }, uShadow: { value: new THREE.Color('#3a4868') },
+  },
+  vertexShader: `
+    attribute float aSeed, aAlpha;
+    varying vec2 vUv;
+    varying float vSeed, vAlpha;
+    void main() {
+      vUv = uv; vSeed = aSeed;
+      vec3 center = instanceMatrix[3].xyz;
+      vec2 scale = vec2(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz));
+      vec4 mv = modelViewMatrix * vec4(center, 1.);
+      mv.xy += position.xy * scale;           // плоскость всегда смотрит в камеру
+      float dist = -mv.z;
+      // вплотную к камере клуб растворяется (иначе на весь экран), вдали — тонет в темноте
+      vAlpha = aAlpha * smoothstep(2., .35 * scale.x, dist) * (1. - smoothstep(300., 460., dist));
+      gl_Position = projectionMatrix * mv;
+    }`,
+  fragmentShader: `
+    uniform sampler2D tNoise, tTrail;
+    uniform float uTime;
+    uniform vec2 uRes;
+    uniform vec3 uLight, uShadow;
+    varying vec2 vUv;
+    varying float vSeed, vAlpha;
+    void main() {
+      float t = uTime;
+      float tr = texture2D(tTrail, gl_FragCoord.xy / uRes).r;
+      // форма клуба: круг, сильно искажённый шумом, края медленно «дышат»
+      vec2 dUv = vUv;
+      dUv += .3 * (texture2D(tNoise, vUv * vec2(.5, .25) + vSeed + vec2(.012 * t, 0.)).r - .5);
+      dUv += .15 * (texture2D(tNoise, vUv * vec2(1.2, .6) + vSeed * 1.7 - vec2(.009 * t, .003 * t)).g - .5);
+      dUv += .08 * tr;                        // курсор раздувает край
+      // мягкое пятно без чёткого края: по горизонтали тянется, по вертикали быстро тает
+      vec2 q = (dUv - .5) * vec2(2., 2.);
+      float m = 1. - smoothstep(.2, 1., length(q));
+      // внутри — рваные пряди и просветы: плотность решает шум, а не форма круга
+      float wisp = texture2D(tNoise, vUv * vec2(1.6, .8) + vSeed * 3. + vec2(.015 * t, .004 * t)).b;
+      float wisp2 = texture2D(tNoise, vUv * vec2(3.2, 1.6) - vSeed * 2. + vec2(-.01 * t, .006 * t)).a;
+      m *= .35 + .65 * smoothstep(.25, .7, wisp * .7 + wisp2 * .3);
+      float detail = wisp;
+      // сверху слой подсвечен небом, снизу в тени
+      float shade = clamp(smoothstep(.1, .9, dUv.y) * .7 + .3 * detail, 0., 1.);
+      vec3 col = mix(uShadow, uLight, shade);
+      float center = mix(.1, 1., 1. - smoothstep(.1, .42, abs(gl_FragCoord.x / uRes.x - .5)));   // к краям экрана тает
+      gl_FragColor = vec4(col, clamp(m * 1.6, 0., 1.) * vAlpha * (1. - .9 * tr) * center);   // курсор расчищает туман
+    }`,
+  transparent: true, depthWrite: false, depthTest: true,
+});
+const mistMesh = new THREE.InstancedMesh(mistGeo, mistMat, mist.length);
+mistMesh.frustumCulled = false;
+scene.add(mistMesh);
+
+// Клубы медленно сносит вдоль разреза; уйдя за край полосы, клуб гаснет и появляется с другого конца.
+// Сортируем от дальних к ближним каждый кадр — так прозрачность ложится правильно
+const MIST_WIND = 1.6;                                      // условных метров в секунду
+const mistM = new THREE.Matrix4(), mistV = new THREE.Vector3();
+const mistOrder = mist.map((_, i) => i);
+function updateMist(time) {
+  const span = MIST_Z[0] - MIST_Z[1];
+  mist.forEach(p => {
+    const u = (((p.z - MIST_Z[1] + MIST_WIND * time) % span) + span) % span / span;   // 0…1 вдоль полосы
+    p.cz = MIST_Z[1] + u * span;
+    p.cx = p.x + Math.sin(time * .07 + p.seed) * p.sx * .05;
+    p.ca = p.a * MIST_DENSITY * sm(0, .08, u) * (1 - sm(.92, 1, u));
+    mistV.set(p.cx, p.y + mistMesh.position.y, p.cz);
+    p.d = mistV.distanceToSquared(camera.position);
+  });
+  mistOrder.sort((a, b) => mist[b].d - mist[a].d);
+  mistOrder.forEach((idx, slot) => {
+    const p = mist[idx];
+    mistM.makeScale(p.sx, p.sy, 1).setPosition(p.cx, p.y, p.cz);
+    mistMesh.setMatrixAt(slot, mistM);
+    mistSeed.array[slot] = p.seed;
+    mistAlpha.array[slot] = p.ca;
+  });
+  mistMesh.instanceMatrix.needsUpdate = true;
+  mistSeed.needsUpdate = mistAlpha.needsUpdate = true;
+}
+// ── Свет с неба: сверху холодный яркий, снизу почти чёрный ──
+scene.add(new THREE.HemisphereLight('#5d6f92', '#030405', 1.1));
+const moon = new THREE.DirectionalLight('#dbe7ff', 1.9);
+moon.position.set(30, 600, -120);
+scene.add(moon);
+const rim = new THREE.DirectionalLight('#7f9be0', 1.2);   // контровой свет — блики на гранях к камере
+rim.position.set(-40, 260, -300);
+scene.add(rim);
+
+// ── Небо: градиент, полоса Млечного Пути и звёзды ──
+const SKY_R = 2000;
+const skyMat = new THREE.ShaderMaterial({
+  uniforms: { uTime: { value: 0 }, uDim: { value: 0 }, uDark: { value: 0 }, uAurora: { value: 1 }, ...HFOG },
+  vertexShader: `varying vec3 vDir; void main() { vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`,
+  fragmentShader: HFOG_GLSL + `
+    uniform float uTime, uDim, uDark, uAurora;
+    varying vec3 vDir;
+    float h(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+    float n3(vec3 x) {
+      vec3 i = floor(x), f = fract(x); f = f * f * (3. - 2. * f);
+      return mix(mix(mix(h(i), h(i + vec3(1,0,0)), f.x), mix(h(i + vec3(0,1,0)), h(i + vec3(1,1,0)), f.x), f.y),
+                 mix(mix(h(i + vec3(0,0,1)), h(i + vec3(1,0,1)), f.x), mix(h(i + vec3(0,1,1)), h(i + vec3(1,1,1)), f.x), f.y), f.z);
+    }
+    void main() {
+      vec3 d = normalize(vDir);
+      // светлее и ярче, чем на референсе: глубокий синий в зените, свечение ниже
+      vec3 zenith = vec3(.12, .2, .38), mid = vec3(.2, .3, .52), low = vec3(.1, .14, .24);
+      vec3 col = mix(low, mid, smoothstep(-.05, .35, d.y));
+      col = mix(col, zenith, smoothstep(.45, 1., d.y));
+      // Млечный Путь: полоса вдоль большого круга, рваная от шума
+      float band = abs(dot(d, normalize(vec3(.55, .25, .8))));
+      float dust = n3(d * 22.) * .55 + n3(d * 48.) * .45;                 // мелкая звёздная пыль, без крупных пятен
+      float milky = smoothstep(.2, 0., band) * (.35 + .8 * dust);
+      milky *= 1. - .55 * smoothstep(.06, 0., band) * smoothstep(.6, .35, n3(d * 30. + 3.));   // тонкие тёмные прожилки
+      col += milky * vec3(.16, .19, .3) * (1. - uDim);   // Млечный Путь тоже «улетает» в картинку
+      col *= 1. - .6 * uDim;                     // когда звёзды собираются в видео, небо притухает — картинка контрастнее
+      // туман из разреза ложится и на небо в просвете между стенами
+      float dyU = max(d.y, .03);
+      col = hfApply(col, hfCam, vec3(d.x, dyU, d.z), 6000., hfCam + d * (40. / dyU));
+      // северное сияние: ленты поперёк разреза с вертикальными лучами, медленно колышутся; гаснет, пока небо темнеет.
+      // Рисуется поверх тумана — светится сквозь дымку
+      if (uAurora > .001 && d.y > .05) {
+        vec2 ap = d.xz / d.y;                                          // точка на «потолке» неба
+        vec3 acol = vec3(0.);
+        for (int i = 0; i < 3; i++) {
+          float fi = float(i);
+          float line = -.45 - fi * .7 + .25 * sin(ap.x * .6 + uTime * .05 + fi * 2.) + .2 * n3(vec3(ap.x * .8, fi, uTime * .03));
+          float off = ap.y - line;                                     // расстояние от линии ленты
+          float band = exp(-off * off * 16.);
+          float rays = (.4 + .6 * n3(vec3(ap.x * 7. + fi * 5., uTime * .12, fi))) * (.55 + .45 * n3(vec3(ap.x * 22., uTime * .2, fi + 9.)));
+          // нижний край ленты — зелень, бо́льшая часть ленты — насыщенный фиолетовый
+          vec3 tint = mix(vec3(.12, .85, .5), vec3(.62, .28, 1.), smoothstep(-.2, .08, -off));
+          acol += band * rays * (1. - fi * .2) * tint;
+        }
+        col += acol * 1.8 * uAurora;
+      }
+      // со скроллом небо темнеет до почти чёрного фона из макета (радиальный градиент #1C1C1C → #0B0B0B,
+      // светлее внизу слева от центра) — к моменту, когда таблица уехала с экрана
+      vec2 fp = vec2(gl_FragCoord.x / hfRes.x * 1920., (1. - gl_FragCoord.y / hfRes.y) * 1080.) - 887.;
+      float ga = radians(138.776);
+      vec2 gq = vec2(cos(ga) * fp.x - sin(ga) * fp.y, sin(ga) * fp.x + cos(ga) * fp.y) / vec2(1572.84, 1022.52);
+      vec3 night = mix(vec3(28.) / 255., vec3(11.) / 255., clamp(length(gq), 0., 1.));
+      col = mix(col, night, uDark);
+      gl_FragColor = vec4(col, 1.);
+    }`,
+  side: THREE.BackSide, depthWrite: false, fog: false,
+});
+const sky = new THREE.Mesh(new THREE.SphereGeometry(SKY_R, 48, 24), skyMat);
+scene.add(sky);
+
+// Отдельных фоновых звёзд нет: всё звёздное небо — это точки будущей картинки (ниже), при сборке улетают все
+
+// ── Звёзды, которые собираются в видео ──
+// Каждая точка сетки видео сначала — звезда на небе: далеко, мерцает, её закрывают стены разреза.
+// Когда камера вылетела из разреза, звёзды срываются с неба, летят к зрителю и встают в сетку
+// прямо перед камерой; яркость точки берётся из кадра ролика (чёрный фон — пусто, самосвал — светится)
+const VIDEO_TRUCK = '../videos/elga-belaz-dark.mp4';
+const FILE_MODE = location.protocol === 'file:';           // при открытии двойным щелчком кадры видео читать нельзя
+const truckVideo = document.createElement('video');
+truckVideo.muted = true; truckVideo.playsInline = true; truckVideo.preload = 'auto';   // не играет само — кадр выбирает скролл
+truckVideo.src = VIDEO_TRUCK;
+const truckTex = new THREE.VideoTexture(truckVideo);
+truckTex.minFilter = truckTex.magFilter = THREE.LinearFilter;
+truckTex.generateMipmaps = false;
+// следующее видео: в него разбирается и собирается самосвал — поезд, зацикленный ролик (34 кадра)
+const VIDEO_NEXT = '../videos/elga-train-dark720.mp4';
+const nextVideo = document.createElement('video');
+nextVideo.muted = true; nextVideo.playsInline = true; nextVideo.preload = 'auto';
+nextVideo.src = VIDEO_NEXT;
+const nextTex = new THREE.VideoTexture(nextVideo);
+nextTex.minFilter = nextTex.magFilter = THREE.LinearFilter;
+nextTex.generateMipmaps = false;
+
+// какой отрезок ролика идёт от скролла, в секундах: в ролике с самосвалом он целиком в кадре с 2,0 до 3,4 с
+// (до этого кадр пустой, после — уезжает за край)
+const TRUCK_CLIP = [2.0, 3.4];
+const LOOP_PX_PER_SEC = 12 * 30;                            // зацикленный ролик: ~12 px прокрутки на кадр при 30 к/с
+// перемотка видео по скроллу: доля 0…1 — от начала до конца отрезка; новый кадр просим, только когда прошлый уже показан
+function scrubVideo(video, f, clip) {
+  if (!(video.duration > 0) || video.seeking) return;
+  const a = Math.min(clip[0], video.duration), b = Math.min(clip[1], video.duration - .04);
+  const t = a + (b - a) * Math.min(1, Math.max(0, f));
+  if (Math.abs(video.currentTime - t) > 1 / 40) video.currentTime = t;
+}
+
+// зацикленный ролик: скролл крутит его по кругу (вперёд и назад), после последнего кадра снова первый
+function scrubLoop(video, px) {
+  if (!(video.duration > 0) || video.seeking) return;
+  const d = video.duration, t = ((Math.max(0, px) / LOOP_PX_PER_SEC) % d + d) % d;
+  if (Math.abs(video.currentTime - t) > 1 / 40) video.currentTime = Math.min(t, d - .001);
+}
+
+const PLANE_D = 10;                                         // на каком расстоянии перед камерой встаёт картинка
+const VSTAR_COLS = 268, VSTAR_ROWS = 151;                   // сетка точек картинки (16:9); меньше — реже точки
+const vstarMat = new THREE.ShaderMaterial({
+  uniforms: {
+    tVideo: { value: truckTex }, uReady: { value: 0 }, uAsm: { value: 0 }, uTime: { value: 0 },
+    tVideo2: { value: nextTex }, uReady2: { value: 0 }, uMorph: { value: 0 }, uOut: { value: 0 },
+    uCamPos: { value: new THREE.Vector3() }, uCamMat: { value: new THREE.Matrix4() },
+    uPlane: { value: new THREE.Vector2(16, 9) }, uR: { value: SKY_R * .95 },
+    uPixel: { value: 1 }, uCell: { value: 4 },
+  },
+  vertexShader: `
+    attribute vec3 aStar;
+    attribute vec2 aUv;
+    attribute float aRand, aStarA;
+    uniform sampler2D tVideo, tVideo2;
+    uniform float uReady2, uMorph, uOut;
+    uniform vec3 uCamPos;
+    uniform mat4 uCamMat;
+    uniform vec2 uPlane;
+    uniform float uR, uAsm, uTime, uReady, uPixel, uCell;
+    varying float vA;
+    void main() {
+      // своя задержка у каждой точки — звёзды срываются с неба не разом
+      float t = clamp((uAsm - aRand * .15) / .85, 0., 1.);
+      float e = 1. - pow(1. - t, 2.2);                    // быстрый старт: звезда срывается сразу, к месту подлетает мягко
+      // место в картинке: плоскость перед камерой во всю ширину экрана
+      vec3 local = vec3((aUv.x - .5) * uPlane.x, (aUv.y - .5) * uPlane.y, -${PLANE_D}.);
+      vec3 planeW = (uCamMat * vec4(local, 1.)).xyz;
+      vec3 toPlane = planeW - uCamPos;
+      // полёт: на экране звезда сдвигается только когда меняется её направление (приближение издалека
+      // почти не видно), поэтому направление поворачивается к месту в картинке сразу и быстро,
+      // а расстояние сокращается следом по логарифму — звезда «подлетает», а не телепортируется
+      float eDir = 1. - pow(1. - t, 4.);
+      vec3 dir = normalize(mix(aStar, normalize(toPlane), eDir) + vec3(0., 1e-3, 0.));
+      float dist = exp(mix(log(uR), log(length(toPlane)), e));
+      vec3 p = uCamPos + dir * dist;
+
+      // яркость в картинке: светлое в кадре ролика светится, чёрный фон — пусто
+      vec3 c = texture2D(tVideo, aUv).rgb;
+      float b = pow(smoothstep(.03, .55, dot(c, vec3(.299, .587, .114))), .75) * uReady;
+      // смена видео: точки разлетаются в стороны и собираются обратно уже в следующий ролик (у каждой своя задержка)
+      float mt = clamp((uMorph - aRand * .2) / .8, 0., 1.);
+      float scatter = sin(mt * 3.14159);
+      vec3 c2 = texture2D(tVideo2, aUv).rgb;
+      // поезд светлее и с большим разбросом яркостей, чем самосвал: мягкая кривая почти по всему диапазону —
+      // светлые грани не сливаются в одну массу, тени вагонов приподняты, объём читается
+      float b2 = pow(clamp((dot(c2, vec3(.299, .587, .114)) - .05) / .8, 0., 1.), .55) * 1.15 * uReady2;
+      b = mix(b, b2, smoothstep(.35, .65, mt));
+      p += normalize(mat3(uCamMat) * vec3(aStar.x, aStar.z * .8, aStar.y - .45)) * scatter * (2.5 + 6. * aRand);
+      // уход к порту: точки разлетаются и гаснут
+      float ot = clamp((uOut - aRand * .3) / .7, 0., 1.);
+      p += normalize(mat3(uCamMat) * vec3(aStar.x, aStar.z, aStar.y)) * ot * (6. + 12. * aRand);
+
+      float twinkle = .65 + .35 * sin(uTime * (1. + aRand * 2.) + aRand * 50.);
+      float starA = aStarA * twinkle;
+      // в полёте звезда вспыхивает — видно, как звёзды срываются с неба; на месте остаётся яркость кадра
+      float flight = sin(eDir * 3.14159);                 // вспышка — вместе с поворотом, с первого мгновения сборки
+      vA = (mix(starA, b, e) + flight * (.35 + .5 * aStarA) + scatter * .2 * (.3 + aStarA)) * (1. - ot);
+      // на небе и в полёте видна только половина точек; вторая половина проявляется уже на своих местах к концу сборки
+      float late = step(.5, fract(aRand * 7.31));
+      vA *= mix(1., smoothstep(.65, 1., uAsm), late);
+      gl_PointSize = mix((1. + 1.8 * aStarA) * uPixel, uCell * mix(.35, .8, b), e) + flight * 1.5 * uPixel;
+      gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.);
+    }`,
+  fragmentShader: `
+    varying float vA;
+    void main() {
+      float d = length(gl_PointCoord - .5);
+      gl_FragColor = vec4(vec3(.92, .95, 1.), smoothstep(.5, .1, d) * vA);
+    }`,
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
+});
+{
+  const COLS = VSTAR_COLS, ROWS = VSTAR_ROWS;
+  let s = 29;
+  const r = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+  const uv = [], star = [], rand = [], starA = [], pos = [];
+  for (let j = 0; j < ROWS; j++) for (let i = 0; i < COLS; i++) {
+    const u = (i + .5 + (r() - .5) * .6) / COLS, v = (j + .5 + (r() - .5) * .6) / ROWS;
+    uv.push(u, v);
+    // звезда — в случайной точке всего неба (верхняя полусфера): других звёзд нет, это и есть звёздное небо
+    const y = Math.pow(r(), .8) * .97 + .03, a = r() * Math.PI * 2, rad = Math.sqrt(1 - y * y);
+    star.push(Math.cos(a) * rad, y, Math.sin(a) * rad);
+    rand.push(r());
+    starA.push(Math.pow(r(), 2.4));                         // большинство звёзд еле видны, редкие — яркие
+    pos.push(0, 0, 0);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('aUv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.setAttribute('aStar', new THREE.Float32BufferAttribute(star, 3));
+  geo.setAttribute('aRand', new THREE.Float32BufferAttribute(rand, 1));
+  geo.setAttribute('aStarA', new THREE.Float32BufferAttribute(starA, 1));
+  const vstars = new THREE.Points(geo, vstarMat);
+  vstars.frustumCulled = false;
+  scene.add(vstars);
+}
+
+// ── Размеры ──
+// ════════ Порт: ночная 3D-модель (dark/port.js) — своя сцена и камера, рисуется вместо пролога ════════
+const port = ElgaPort.create(THREE, renderer, wallMat, noiseTex);
+// ════════ Земной шар (dark/globe.js): после порта камера отлетает, шар с дугами поставок ════════
+const globe = ElgaGlobe.create(THREE, renderer, noiseTex);
+let GLOBE_A = 1e9, GLOBE_B = 1e9 + 1, GLOBE_END = 1e9 + 2, ARC_A = 1e9, ARC_B = 1e9 + 1;
+// моменты экрана порта, в пикселях прокрутки (считаются по текстам в конце кадра)
+let OUT_A = 1e9, OUT_B = 1e9 + 1, REV_A = 1e9, REV_B = 1e9 + 1, CAM_END = 1e9 + 2;
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false);
+  port.resize(w, h);
+  globe.resize(w, h);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  // картинка из звёзд — во всю ширину экрана, пропорции ролика 16:9
+  const visH = 2 * PLANE_D * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  const visW = visH * camera.aspect;
+  const pw = visW;
+  vstarMat.uniforms.uPlane.value.set(pw, pw * 9 / 16);
+  vstarMat.uniforms.uPixel.value = renderer.getPixelRatio() * Math.max(1, h / 900);
+  vstarMat.uniforms.uCell.value = (pw / visW) * w * renderer.getPixelRatio() / VSTAR_COLS;   // шаг сетки в пикселях
+  const buf = renderer.getDrawingBufferSize(new THREE.Vector2());
+  mistMat.uniforms.uRes.value.copy(buf);
+  HFOG.hfRes.value.copy(buf);
+  trailRT.forEach(rt => rt.dispose());
+  trailRT = [0, 1].map(() => new THREE.WebGLRenderTarget(Math.max(64, buf.x >> 2), Math.max(64, buf.y >> 2), { depthBuffer: false }));
+  trailMat.uniforms.uAspect.value = buf.x / buf.y;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ── Прокрутка и мышь ──
+const story = document.getElementById('story');
+// Доли сценария (prog) считаются от прежней длины пролога — 10 экранов прокрутки, а не от его высоты:
+// так пролог можно укорачивать, а подъём камеры и все моменты остаются на тех же пикселях
+const scrollSpan = () => 10 * window.innerHeight;
+let target = 0, prog = 0;
+function readScroll() {
+  const max = scrollSpan();
+  target = Math.max(0, window.scrollY / max);              // может быть больше 1: страница длиннее 10 экранов
+}
+window.addEventListener('scroll', readScroll, { passive: true });
+readScroll();
+let mx = .5, my = .5, pmx = .5, pmy = .5, smx = .5, smy = .5, moved = false;
+window.addEventListener('pointermove', e => {
+  mx = e.clientX / innerWidth; my = 1 - e.clientY / innerHeight;
+  if (!moved) { pmx = mx; pmy = my; moved = true; }
+});
+
+// ── Путь камеры ──
+// Камера смотрит прямо вдоль разреза и по горизонтали не поворачивается — меняется только наклон.
+// На дне взгляд поднят к небу и ещё внутри разреза опускается до горизонтали — камера смотрит вдоль разреза,
+// параллельно земле. Стены долго остаются по бокам кадра; камера поднимается так высоко,
+// что в конце стены целиком уходят за нижний край кадра, а у горизонта остаётся поверхность
+const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
+// движение начинается сразу с первой прокрутки (наполовину линейное), но без рывка и с мягкой остановкой
+const glide = x => .5 * x + .5 * x * x * (3 - 2 * x);
+const RISE_TOP = H + 340;                                 // отсюда даже дальний конец разреза ниже нижнего края кадра
+// подъём занимает первую половину пролога, вторая — сборка видео из звёзд
+const RISE_END = .5;
+function placeCamera(p, time) {
+  const k = Math.min(1, p / RISE_END);
+  const rise = glide(k);
+  const y = THREE.MathUtils.lerp(7, RISE_TOP, rise);
+  // наклон зависит от высоты: взгляд становится ровно горизонтальным, когда камера поднялась до кромки разреза
+  const pitch = THREE.MathUtils.degToRad(THREE.MathUtils.lerp(58, 0, glide(Math.min(1, (y - 7) / (H - 7)))));
+  camPos.set(0, y, THREE.MathUtils.lerp(0, 30, rise));
+  // лёгкое «парение» и реакция на мышь — сдвиг камеры вместе со взглядом, без поворота
+  camPos.x += Math.sin(time * .13) * .4 + (smx - .5) * 2;
+  camPos.y += Math.sin(time * .19) * .25 + (smy - .5) * 1;
+  camLook.set(camPos.x, camPos.y + Math.sin(pitch) * 10, camPos.z - Math.cos(pitch) * 10);
+  camera.position.copy(camPos);
+  // «верх» кадра всегда перпендикулярен взгляду — иначе при взгляде строго вверх картинку крутит
+  camera.up.set(0, Math.cos(pitch), Math.sin(pitch));
+  camera.lookAt(camLook);
+  sky.position.copy(camPos);
+}
+
+// Разрез уходит вниз, когда камера вылетела над его кромкой: ищем, на какой доле прокрутки это происходит
+const DROP_START = (() => {
+  const need = (H + 20 - 7) / (RISE_TOP - 7);              // камера только что вылетела над кромкой
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 30; i++) { const m = (lo + hi) / 2; if (glide(m) < need) lo = m; else hi = m; }
+  return lo * RISE_END;
+})();
+// Звёзды начинают собираться в самосвал, когда собранная таблица с фактоидами тронулась вверх;
+// подпись «Добыча» выезжает снизу, когда таблица ушла за верх экрана наполовину.
+// Блок фактоидов сообщает, при каком своём положении это происходит; пока он не готов — момент вылета камеры
+const ASM_SPAN = .2;                                        // запасная длительность сборки, пока текст «Добычи» не измерен
+const ASM_DELAY = 250;                                      // на сколько пикселей прокрутки позже, чем таблица тронулась
+let ASM_START = DROP_START, ASM_END = DROP_START + ASM_SPAN, miningFrom = Infinity;
+let MORPH_START = 2, MORPH_END = 3;                         // смена видео: самосвал разбирается и собирается в следующее
+let SKY_DARK_END = DROP_START;                              // к этой доле прокрутки небо — как в макете (таблица ушла с экрана)
+const factsBox = document.querySelector('.facts[data-led]');
+function syncAsmStart() {
+  if (!factsBox || factsBox.elgaDoneTop == null) return;
+  // верх блока едет вместе с прокруткой один к одному: прокрутка события = сейчас + оставшийся путь блока
+  const at = top => window.scrollY + factsBox.getBoundingClientRect().top - top;
+  ASM_START = Math.min(.9, Math.max(0, (at(factsBox.elgaDoneTop) + ASM_DELAY) / scrollSpan()));
+  miningFrom = at(factsBox.elgaHalfTop);
+  SKY_DARK_END = Math.max(.01, at(factsBox.elgaExitTop) / scrollSpan());
+}
+// Когда звёзды начинают собираться, разрез вместе с землёй уезжает вниз, за нижний край кадра
+const DROP_LEN = .1;                                        // за какую долю прокрутки
+const DROP_DEPTH = 1400;                                    // насколько вниз — так, что даже дальний край земли ниже кадра
+
+const capHero = document.getElementById('capHero');
+const capIntro = document.getElementById('capIntro');
+const capMining = document.getElementById('capMining');
+const capMiningSub = document.getElementById('capMiningSub');
+const capEnrich = document.getElementById('capEnrich');
+const capEnrichSub = document.getElementById('capEnrichSub');
+const capPort = document.getElementById('capPort');
+const capPortSub = document.getElementById('capPortSub');
+const capWorld = document.getElementById('capWorld');
+const capWorldSub = document.getElementById('capWorldSub');
+// размеры текстовых блоков — для расчёта мест; пересчитываются при изменении окна и после загрузки шрифтов
+const stackSize = (el, sub) => ({ h: el.offsetHeight, subOff: sub.offsetTop, titleH: el.firstElementChild.offsetHeight });
+let mineSize = {}, enrichSize = {}, portSize = {}, worldSize = {};
+const measureMining = () => {
+  mineSize = stackSize(capMining, capMiningSub); enrichSize = stackSize(capEnrich, capEnrichSub); portSize = stackSize(capPort, capPortSub);
+  worldSize = stackSize(capWorld, capWorldSub);
+};
+// Блок «заголовок + описание»: с прокрутки from снизу выезжает заголовок и встаёт на место (блок по центру экрана),
+// ждёт описание; описание выезжает снизу следом, встаёт под заголовок — дальше уезжают вверх вместе.
+// Возвращает места и моменты (в пикселях прокрутки), по которым запускается остальное
+const TEXT_HOLD = .4;                                       // собравшийся текст стоит ещё столько экранов прокрутки
+function placeStack(el, sub, size, from, vh, sy, hold = vh * TEXT_HOLD) {
+  const titleY = (vh - size.h) / 2, subY = titleY + size.subOff;   // места заголовка и описания
+  const titleIn = from + (vh - titleY);                            // заголовок встал на место
+  const subIn = titleIn + (vh - subY);                             // описание встало на место
+  const leave = subIn + hold;                                      // текст постоял — начинает уходить (фон тем временем живёт)
+  const away = Math.max(0, sy - leave);
+  const tY = Math.min(vh * 1.1, sy < titleIn ? vh - (sy - from) : titleY - away);
+  const sY = sy < titleIn ? vh * 1.1 : (sy < subIn ? vh - (sy - titleIn) : subY - away);
+  el.style.transform = `translateY(${tY}px)`;
+  sub.style.transform = `translateY(${sY - tY - size.subOff}px)`;
+  return {
+    titleIn, subIn, leave,
+    titleGone: leave + titleY + size.titleH,                       // заголовок целиком ушёл за верх экрана
+    almostGone: leave + titleY + size.h - vh * .15,                // блок почти уехал: низ описания на 15% высоты экрана
+    gone: leave + titleY + size.h,                                 // блок целиком ушёл за верх экрана
+  };
+}
+window.addEventListener('resize', measureMining);
+document.fonts && document.fonts.ready.then(measureMining);
+measureMining();
+const hint = document.getElementById('hint');
+
+let lastT = 0, ping = 0;
+function frame(tms) {
+  const time = tms / 1000;
+  const dt = Math.min(.25, lastT ? time - lastT : 1 / 60);
+  lastT = time;
+  prog += (target - prog) * Math.min(1, dt * 5);
+  smx += (mx - smx) * Math.min(1, dt * 3); smy += (my - smy) * Math.min(1, dt * 3);
+
+  // камера высоко над поверхностью — стены за нижним краем кадра, выгружаем; вернулись ниже — строим снова
+  // разрез и земля уехали за кадр — выгружаем; пролистали назад — строим снова
+  if (prog > DROP_START + DROP_LEN + .02) unloadRock();
+  else if (prog < DROP_START + DROP_LEN - .02) buildRock();
+  if (rock) rock.position.y = -DROP_DEPTH * sm(DROP_START, DROP_START + DROP_LEN, prog);   // уходит вниз ровно, без медленного разгона
+
+  const asm = sm(ASM_START, ASM_END, prog);
+  const storyVisible = story.getBoundingClientRect().bottom > 0;
+  // видео играет, только пока звёзды собираются или уже собрались и пролог на экране
+  const morph = sm(MORPH_START, MORPH_END, prog);
+  // видео идут от скролла: самосвал — от начала сборки до конца смены видео, следующий ролик — от смены до ухода к порту
+  if (storyVisible) {
+    const span = scrollSpan(), sP = prog * span;
+    scrubVideo(truckVideo, (sP - ASM_START * span) / Math.max(1, (MORPH_END - ASM_START) * span), TRUCK_CLIP);
+    scrubLoop(nextVideo, sP - MORPH_START * span);
+  }
+
+  if (storyVisible) {
+    // след курсора для тумана: старый гаснет, новый дорисовывается
+    const src = trailRT[ping], dst = trailRT[1 - ping];
+    trailMat.uniforms.tPrev.value = src.texture;
+    trailMat.uniforms.uMouse.value.set(mx, my);
+    trailMat.uniforms.uMousePrev.value.set(pmx, pmy);
+    trailMat.uniforms.uForce.value = moved ? Math.min(.3, Math.hypot(mx - pmx, my - pmy) * 10) : 0;
+    trailMat.uniforms.uDecay.value = Math.pow(.965, dt * 60);
+    renderer.setRenderTarget(dst);
+    renderer.render(trailScene, orthoCam);
+    renderer.setRenderTarget(null);
+    pmx = mx; pmy = my;
+    ping = 1 - ping;
+
+    placeCamera(prog, time);
+    camera.updateMatrixWorld();
+    // туман живёт в разрезе: уезжает вниз вместе с ним и пропадает, когда разрез выгружен
+    HFOG.hfCam.value.copy(camera.position);
+    HFOG.hfTime.value = time;
+    HFOG.hfTrail.value = dst.texture;
+    HFOG.hfBase.value = rock ? rock.position.y : -1e4;     // разрез выгружен — тумана нет
+    mistMesh.visible = !!rock;
+    if (rock) {
+      mistMesh.position.y = rock.position.y;
+      updateMist(time);
+      mistMat.uniforms.uTime.value = time;
+      mistMat.uniforms.tTrail.value = dst.texture;
+    }
+    skyMat.uniforms.uTime.value = time;
+    skyMat.uniforms.uDim.value = sm(.3, 1, asm);
+    // небо плавно темнеет от начала до ухода таблицы; сияние гаснет чуть раньше; дымка у горизонта — из синей в нейтральную
+    const dark = sm(0, SKY_DARK_END, prog);
+    skyMat.uniforms.uDark.value = dark;
+    skyMat.uniforms.uAurora.value = 1 - sm(0, SKY_DARK_END * .8, prog);
+    scene.fog.color.lerpColors(FOG_BLUE, FOG_NIGHT, dark);
+    const U = vstarMat.uniforms;
+    U.uTime.value = time;
+    U.uAsm.value = asm;
+    U.uCamPos.value.copy(camera.position);
+    U.uCamMat.value.copy(camera.matrixWorld);
+    const ready = !FILE_MODE && truckVideo.readyState >= 2 ? 1 : 0;
+    U.uReady.value += (ready - U.uReady.value) * Math.min(1, dt * 3);
+    const ready2 = !FILE_MODE && nextVideo.readyState >= 2 ? 1 : 0;
+    U.uReady2.value += (ready2 - U.uReady2.value) * Math.min(1, dt * 3);
+    U.uMorph.value = morph;
+    // экран порта: точки разлетаются и гаснут, из темноты проступает порт, камера летит над ним со скроллом
+    const sS = prog * scrollSpan();                          // сглаженная прокрутка в пикселях
+    U.uOut.value = sm(OUT_A, OUT_B, sS);
+    // переход к шару — сквозь густые облака: пелена нарастает, под ней порт сменяется шаром, пелена расходится
+    const vH = window.innerHeight, gMid = (GLOBE_A + GLOBE_B) / 2;
+    // вторая половина: пелена быстро уступает облакам на самом шаре — они отдаляются вместе с ним
+    const veil = sm(GLOBE_A - vH * .3, gMid, sS) * (1 - sm(gMid + vH * .02, gMid + vH * .3, sS));
+    const gFade = sm(gMid - vH * .08, gMid + vH * .08, sS);
+    const reveal = sm(REV_A, REV_B, sS) * (1 - sm(gMid - vH * .04, gMid + vH * .12, sS));
+    if (reveal > .001) port.render(reveal, (sS - REV_A) / Math.max(1, CAM_END - REV_A), time, smx, smy, dst.texture);
+    else if (gFade <= .001) renderer.render(scene, camera);
+    if (gFade > .001) {
+      const arcs = 6 * Math.min(1, Math.max(0, (sS - ARC_A) / Math.max(1, ARC_B - ARC_A)));   // дуги выпускаются по очереди
+      globe.render(gFade, (sS - gMid) / Math.max(1, GLOBE_END - gMid), time, smx, smy, arcs, reveal > .001);
+    }
+    if (veil > .001) globe.renderVeil(veil, Math.min(1, Math.max(0, (sS - GLOBE_A + vH * .3) / (GLOBE_B - GLOBE_A + vH * .75))), time);
+    // метель начинается вместе с разлётом точек видео и переходит в экран порта
+    const snowA = sm(OUT_A, OUT_A + window.innerHeight * .35, sS) * (1 - gFade);   // в космосе метели нет
+    if (snowA > .001) port.renderSnow(snowA, time);
+  }
+
+  // Тексты едут вместе с прокруткой и уходят за верх экрана; второй поднимается, пока первый ещё виден
+  const vh = window.innerHeight, sy = window.scrollY;
+  capHero.style.transform = `translateY(${vh * .3 - sy}px)`;
+  capIntro.style.transform = `translateY(${vh * 1.02 - sy}px)`;
+  syncAsmStart();                                          // таблица только что встала на место этого кадра
+  hint.style.opacity = 1 - sm(0, vh * .1, sy);
+  // «Добыча» выезжает, когда таблица ушла наполовину; сборка самосвала заканчивается, когда весь её текст встал на место.
+  // Когда «Добыча» почти уехала — выезжает «Обогащение» (справа). Как только заголовок «Добычи» скрылся,
+  // самосвал разбирается на частицы и собирается в следующее видео — к моменту, когда текст «Обогащения» встал на место
+  {
+    const storyMax = scrollSpan();
+    const mine = placeStack(capMining, capMiningSub, mineSize, miningFrom, vh, sy);
+    ASM_END = Math.max(ASM_START + .01, mine.subIn / storyMax);
+    // текст «Железной дороги» стоит дольше — так, чтобы её ролик шёл на тот же отрезок прокрутки, что ролик «Добычи»
+    // (от начала сборки самосвала до встающего текста «Дороги»): оба ролика — одной длины
+    const roadHold = Math.max(vh * TEXT_HOLD, mine.titleGone - ASM_START * storyMax - vh * .6);
+    const enrich = placeStack(capEnrich, capEnrichSub, enrichSize, mine.almostGone, vh, sy, roadHold);
+    MORPH_START = mine.titleGone / storyMax;
+    MORPH_END = Math.max(MORPH_START + .01, enrich.subIn / storyMax);
+    // Порт: когда «Обогащение» начало уезжать, точки разлетаются и гаснут; из темноты проступает порт;
+    // текст «Порт» выезжает слева, когда «Обогащение» почти уехало
+    const portText = placeStack(capPort, capPortSub, portSize, enrich.almostGone, vh, sy);
+    OUT_A = enrich.leave + vh * .1; OUT_B = OUT_A + vh * .5;
+    REV_A = OUT_B - vh * .15; REV_B = REV_A + vh * .6;
+    // пролог заканчивается через 0,8 экрана после того, как текст порта уехал; камера летит над портом до самого конца
+    CAM_END = portText.gone;
+    // Мир: когда «Порт» почти уехал — камера продолжает подъём, сквозь облака проступает шар и отлетает от него.
+    // Текст справа выезжает, когда пелена расходится; дуги поставок выпускаются, пока текст приезжает и стоит
+    // сначала — чистый взлёт над портом (полэкрана после ухода текста), потом камера входит в облака
+    GLOBE_A = portText.gone + vh * .5; GLOBE_B = GLOBE_A + vh * .7;
+    const worldText = placeStack(capWorld, capWorldSub, worldSize, GLOBE_B, vh, sy);
+    // страница заканчивается, когда текст «Мира» встал на место: к этому моменту камера отлетела и все страны включены
+    GLOBE_END = worldText.subIn;
+    ARC_A = GLOBE_B; ARC_B = worldText.subIn;
+    const storyH = Math.round(worldText.subIn + vh);
+    // начала экранов для сетки (на первом экране и на экране фактоидов её нет): «Добыча», «Дорога», «Порт», «Мир»;
+    // на «Порте» и «Мире» ячейки 23 и 42 не показываем — они попадают на текст
+    window.ElgaScreens = [miningFrom, mine.almostGone, enrich.almostGone, (GLOBE_A + GLOBE_B) / 2];
+    window.ElgaScreenOff = [[], [], [23, 42], [23, 42]];
+    window.ElgaScreenMirror = [false, true, false, true];               // текст справа — сетка зеркально
+    window.ElgaBtnFrom = sy + factsBox.getBoundingClientRect().top - vh * .5;   // кнопка «наверх» — со второго экрана (таблица фактоидов)
+    if (Math.abs(story.offsetHeight - storyH) > 2) story.style.height = storyH + 'px';
+  }
+
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

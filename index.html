@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Эльга — концепты</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400..900&display=swap" rel="stylesheet">
+<style>
+  @font-face {
+    font-family: 'Activist';
+    src: url('font/Activist.woff2') format('woff2'), url('font/Activist.woff') format('woff');
+    font-weight: 400; font-style: normal; font-display: swap;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; font-family: 'Golos Text', system-ui, sans-serif; }
+  body { display: grid; grid-template-columns: 1fr 1fr; }
+  a {
+    position: relative; display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 48px; text-decoration: none; transition: opacity .3s;
+  }
+  a:hover { opacity: .85; }
+  .light { background: #dde3e8; color: #1d2a33; }
+  .dark { background: #0d1013; color: #f4f6f8; }
+  .label { font-size: 13px; letter-spacing: .3em; text-transform: uppercase; opacity: .6; margin-bottom: 16px; }
+  .title { font-family: 'Activist', 'Golos Text', system-ui, sans-serif; font-weight: 400; font-size: clamp(40px, 5vw, 80px); line-height: 1; letter-spacing: 0; }
+  .logo { position: absolute; top: 28px; left: 48px; font-size: 13px; font-weight: 500; letter-spacing: .3em; text-transform: uppercase; }
+  .proto { position: fixed; right: 24px; bottom: 16px; font-size: 12px; color: #8a949c; text-decoration: none; padding: 0; display: inline; }
+  @media (max-width: 760px) {
+    body { grid-template-columns: 1fr; }
+    a { padding: 24px 16px; min-height: 50vh; }
+    .logo { left: 16px; top: 20px; }
+  }
+</style>
+</head>
+<body>
+  <a class="light" href="light/">
+    <span class="logo">Эльга</span>
+    <span class="label">Концепт 1</span>
+    <span class="title">Светлый</span>
+  </a>
+  <a class="dark" href="dark/">
+    <span class="label">Концепт 2</span>
+    <span class="title">Тёмный</span>
+  </a>
+  <a class="proto" href="prototype/">Исходный прототип</a>
+</body>
+</html>

@@ -1,0 +1,1044 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Эльга — прототип облаков</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #f4f6f8;
+    --ink-dim: rgba(244, 246, 248, .7);
+    --ink-dark: #1d2a33;
+    --bg: #0d1013;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink); font-family: Manrope, system-ui, sans-serif; }
+
+  /* Сцена: холст прилипает к экрану, пока длинная секция прокручивается */
+  .story { height: 800vh; position: relative; }
+  .stage { position: sticky; top: 0; height: 100vh; overflow: hidden; background: #dde3e8; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+  /* Шапка */
+  .header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 28px 48px;
+    font-size: 13px; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--ink-dark); transition: color .6s;
+  }
+  .header.light { color: var(--ink); }
+  .logo { font-weight: 500; letter-spacing: .3em; }
+  .menu { display: flex; gap: 32px; }
+
+  /* Тексты глав — отдельный слой, камера их не двигает.
+     Положение по вертикали задаёт скрипт: тексты едут вместе с прокруткой и уходят за верх экрана */
+  .caption {
+    position: absolute; left: 48px; right: 48px; top: 0; z-index: 5;
+    will-change: transform;
+    pointer-events: none;
+  }
+  .caption--hero { color: var(--ink-dark); max-width: 46%; }
+  .caption--hero h1 {
+    font-weight: 300; font-size: clamp(40px, 5.6vw, 96px); line-height: 1.02; letter-spacing: -.02em;
+  }
+  .caption--hero p { margin-top: 28px; font-size: 13px; letter-spacing: .3em; text-transform: uppercase; }
+
+  .caption--intro { color: var(--ink-dark); }
+  .caption--intro p {
+    max-width: 760px; font-weight: 300; font-size: clamp(26px, 3.2vw, 48px); line-height: 1.18; letter-spacing: -.01em;
+  }
+
+  /* Затемнение снизу-слева, чтобы текст читался на светлом разрезе */
+  .scrim {
+    position: absolute; inset: 0; z-index: 4; opacity: 0; pointer-events: none;
+    background: linear-gradient(20deg, rgba(8, 10, 12, .78) 0%, rgba(8, 10, 12, .35) 38%, rgba(8, 10, 12, 0) 62%);
+  }
+  .caption--mine { top: auto; bottom: 12vh; max-width: 640px; }
+  .caption--mine .num { font-weight: 300; font-size: clamp(64px, 9vw, 148px); line-height: .9; letter-spacing: -.03em; }
+  .caption--mine .unit { font-size: .32em; letter-spacing: 0; margin-left: .15em; }
+  .caption--mine p { margin-top: 20px; font-size: 20px; line-height: 1.35; color: var(--ink-dim); max-width: 460px; }
+  .caption--mine .label { font-size: 13px; letter-spacing: .3em; text-transform: uppercase; color: var(--ink); margin-bottom: 20px; }
+
+  /* Шкала маршрута */
+  .route {
+    position: fixed; right: 48px; top: 50%; transform: translateY(-50%); z-index: 10;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 12px;
+    font-size: 11px; letter-spacing: .2em; color: var(--ink-dark); transition: color .6s;
+  }
+  .route.light { color: var(--ink); }
+  .route__bar { width: 2px; height: 160px; background: currentColor; opacity: .25; position: relative; }
+  .route__fill { position: absolute; left: 0; top: 0; width: 100%; background: currentColor; opacity: 1; height: 0; }
+
+  .hint {
+    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%); z-index: 10;
+    font-size: 11px; letter-spacing: .3em; text-transform: uppercase; color: var(--ink-dark);
+    transition: opacity .4s;
+  }
+
+  /* Экран с самосвалом: холст прилипает, пока секция прокручивается; точки собираются в изображение */
+  .globe { height: 320vh; position: relative; background: #121416; }
+  .globe__stage { position: sticky; top: 0; height: 100vh; overflow: hidden; }
+  .globe__stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .globe__caption {
+    position: absolute; left: 48px; top: 0; z-index: 2; max-width: 640px;
+    pointer-events: none; will-change: transform;
+  }
+  .globe__label { font-size: 13px; letter-spacing: .3em; text-transform: uppercase; color: var(--ink-dim); margin-bottom: 20px; }
+  .globe__caption p { font-weight: 300; font-size: clamp(30px, 3.6vw, 56px); line-height: 1.12; letter-spacing: -.01em; color: var(--ink); }
+  /* светлый вариант экрана — самосвал в негативе */
+  .globe--light { background: #fff; }
+  .globe--light .globe__label { color: rgba(29, 42, 51, .6); }
+  .globe--light .globe__caption p { color: var(--ink-dark); }
+
+  .vid-note {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 2;
+    max-width: 520px; padding: 0 16px; text-align: center;
+    font-size: 16px; line-height: 1.5; color: var(--ink-dim);
+  }
+  .vid-note b { color: var(--ink); font-weight: 500; }
+
+  .after { min-height: 60vh; padding: 120px 48px; background: var(--bg); color: var(--ink-dim); font-size: 14px; line-height: 1.6; }
+  .after h2 { color: var(--ink); font-weight: 300; font-size: 40px; margin-bottom: 24px; }
+  .credits { margin-top: 48px; font-size: 12px; opacity: .6; }
+  .credits a { color: inherit; }
+
+  .nogl { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; padding: 24px; text-align: center; color: var(--ink-dark); }
+
+  @media (max-width: 760px) {
+    .caption--hero { max-width: none; }
+    .globe__caption { left: 16px; right: 16px; }
+    .header { padding: 20px 16px; }
+    .menu { display: none; }
+    .caption { left: 16px; right: 16px; }
+    .route { right: 16px; }
+    .route__bar { height: 100px; }
+  }
+</style>
+<script type="importmap">
+  { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+
+<header class="header" id="header">
+  <div class="logo">Эльга</div>
+  <nav class="menu"><span>О&nbsp;компании</span><span>Активы</span><span>Карьера</span><span>Радио</span><span>Контакты</span></nav>
+</header>
+
+<div class="route" id="route">
+  <span id="routeKm">0 км</span>
+  <div class="route__bar"><div class="route__fill" id="routeFill"></div></div>
+</div>
+
+<div class="hint" id="hint">Листайте</div>
+
+<section class="story" id="story">
+  <div class="stage" id="stage">
+    <div class="nogl" id="nogl">Браузер не&nbsp;поддерживает WebGL&nbsp;— сцена недоступна.</div>
+
+    <div class="caption caption--hero" id="capHero">
+      <h1>От недр Якутии<br>до&nbsp;Тихого океана</h1>
+      <p>Эльгинский угольный комплекс</p>
+    </div>
+
+    <div class="caption caption--intro" id="capIntro">
+      <p>Комплекс добывающих и&nbsp;логистических активов на&nbsp;Дальнем Востоке: добыча, обогащение, своя железная дорога и&nbsp;порт.</p>
+    </div>
+
+    <div class="scrim" id="scrim"></div>
+    <div class="caption caption--mine" id="capMine">
+      <div class="label">Глава 1&nbsp;· Разрез</div>
+      <div class="num">2,2<span class="unit">млрд&nbsp;т</span></div>
+      <p>Крупнейшее в&nbsp;России месторождение коксующегося угля. Запасы по&nbsp;стандарту JORC.</p>
+    </div>
+  </div>
+</section>
+
+<section class="globe globe--light" id="globeSec">
+  <div class="globe__stage" id="globeStage">
+    <div class="globe__caption" id="capGlobe">
+      <div class="globe__label">Добыча</div>
+      <p>Открытым способом&nbsp;— до&nbsp;45&nbsp;млн&nbsp;т угля в&nbsp;год</p>
+    </div>
+  </div>
+</section>
+
+<section class="globe" id="vidSec">
+  <div class="globe__stage" id="vidStage"></div>
+</section>
+
+<section class="after">
+  <h2>Дальше&nbsp;— дорога и&nbsp;порт</h2>
+  <p>Здесь продолжится история. В&nbsp;прототипе показаны пролог, переход к&nbsp;разрезу и&nbsp;экраны с&nbsp;самосвалом и&nbsp;видео из&nbsp;точек.</p>
+  <p class="credits">
+    Ели&nbsp;— условные заглушки, позже заменим на&nbsp;фото или 3D-модели.
+    Фото разреза с&nbsp;Wikimedia Commons:
+    <a href="https://commons.wikimedia.org/wiki/File:Tur%C3%B3w_Aerial_2.jpg" target="_blank">«Turów Aerial 2»</a>, CC&nbsp;BY-SA&nbsp;3.0.
+    Это не&nbsp;Эльга&nbsp;— только для проверки приёма.
+  </p>
+</section>
+
+<script src="../assets/belaz-data.js"></script>
+<script type="module">
+import * as THREE from 'three';
+
+const IMG_MINE = 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Tur%C3%B3w_Aerial_2.jpg/3840px-Tur%C3%B3w_Aerial_2.jpg';
+
+const stage = document.getElementById('stage');
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+} catch (e) {
+  document.getElementById('nogl').style.display = 'flex';
+  throw e;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+renderer.autoClear = false;
+stage.prepend(renderer.domElement);
+
+const SKY = new THREE.Color('#dde3e8');
+const FOG = [.867, .89, .91];          // тот же цвет для своих шейдеров
+const BELOW = [.4, .44, .47];          // сумрак под облаками и земля за краями фото
+
+// ── Текстура шума: считается один раз, бесшовная, 4 канала с разным рисунком ──
+function makeNoiseTexture(size = 256) {
+  const data = new Uint8Array(size * size * 4);
+  const hash = (x, y, s) => {
+    let h = (Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(s, 1442695041)) | 0;
+    h = Math.imul(h ^ (h >>> 13), 1274126177);
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
+  };
+  const vnoise = (x, y, period, s) => {
+    const xi = Math.floor(x), yi = Math.floor(y);
+    const xf = x - xi, yf = y - yi;
+    const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+    const m = n => ((n % period) + period) % period;
+    const a = hash(m(xi), m(yi), s), b = hash(m(xi + 1), m(yi), s);
+    const c = hash(m(xi), m(yi + 1), s), d = hash(m(xi + 1), m(yi + 1), s);
+    return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+  };
+  for (let ch = 0; ch < 4; ch++) {
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+      let val = 0, amp = .5, period = 4;
+      for (let o = 0; o < 5; o++) {
+        val += amp * vnoise(x / size * period, y / size * period, period, ch * 101 + o * 7);
+        amp *= .5; period *= 2;
+      }
+      data[(y * size + x) * 4 + ch] = Math.round(val / .97 * 255);
+    }
+  }
+  const tex = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.magFilter = THREE.LinearFilter;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.generateMipmaps = true;
+  tex.needsUpdate = true;
+  return tex;
+}
+const noiseTex = makeNoiseTexture();
+
+// ── След курсора: две текстуры по очереди, старый след гаснет, новый дорисовывается ──
+const orthoCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+const quadGeo = new THREE.PlaneGeometry(2, 2);
+const quadVert = `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }`;
+
+let trailRT = [];
+const trailMat = new THREE.ShaderMaterial({
+  uniforms: {
+    tPrev: { value: null }, uMouse: { value: new THREE.Vector2(.5, .5) }, uMousePrev: { value: new THREE.Vector2(.5, .5) },
+    uAspect: { value: 1 }, uForce: { value: 0 }, uDecay: { value: .96 },
+  },
+  vertexShader: quadVert,
+  fragmentShader: `
+    varying vec2 vUv;
+    uniform sampler2D tPrev;
+    uniform vec2 uMouse, uMousePrev;
+    uniform float uAspect, uForce, uDecay;
+    float segDist(vec2 p, vec2 a, vec2 b) {
+      vec2 pa = p - a, ba = b - a;
+      float h = clamp(dot(pa, ba) / max(dot(ba, ba), 1e-6), 0., 1.);
+      return length(pa - ba * h);
+    }
+    void main() {
+      float v = texture2D(tPrev, vUv).r * uDecay;
+      vec2 asp = vec2(uAspect, 1.);
+      float d = segDist(vUv * asp, uMousePrev * asp, uMouse * asp);
+      float blob = 1. - smoothstep(0., .3, d);          // крупное мягкое пятно — примерно треть высоты экрана
+      v += blob * blob * uForce;
+      gl_FragColor = vec4(min(v, 1.), 0., 0., 1.);
+    }`,
+  depthTest: false, depthWrite: false,
+});
+const trailScene = new THREE.Scene();
+trailScene.add(new THREE.Mesh(quadGeo, trailMat));
+
+// ── 3D-сцена: условные ели, торчащие из моря облаков ──
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(SKY, 14, 135);
+// Небо: сфера вокруг камеры. У горизонта — ровно цвет дымки, поэтому море облаков в него перетекает без линии
+const sky = new THREE.Mesh(
+  new THREE.SphereGeometry(380, 32, 16),
+  new THREE.ShaderMaterial({
+    uniforms: {
+      uFogColor: { value: new THREE.Vector3(...FOG) }, uTop: { value: new THREE.Vector3(.76, .8, .84) },
+      uBelow: { value: new THREE.Vector3(...BELOW) },
+    },
+    vertexShader: `varying vec3 vDir; void main() { vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`,
+    fragmentShader: `
+      uniform vec3 uFogColor, uTop, uBelow;
+      varying vec3 vDir;
+      void main() {
+        vec3 col = mix(uFogColor, uTop, smoothstep(.02, .55, vDir.y));
+        col = mix(col, uBelow, smoothstep(0., -.3, vDir.y));   // под облаками сумрачно — белые клубы читаются объёмом
+        gl_FragColor = vec4(col, 1.);
+      }`,
+    side: THREE.BackSide, depthWrite: false,
+  })
+);
+sky.renderOrder = -2;
+scene.add(sky);
+const camera = new THREE.PerspectiveCamera(38, 1, .1, 400);
+
+// Море облаков: огромная плоскость с шумом. Глубину не пишет — клубы ложатся поверх без резких срезов
+const deckMat = new THREE.ShaderMaterial({
+  uniforms: {
+    tNoise: { value: noiseTex }, uTime: { value: 0 }, uOpacity: { value: 1 },
+    uFogColor: { value: new THREE.Vector3(...FOG) },
+    uLight: { value: new THREE.Vector3(.965, .972, .978) }, uShadow: { value: new THREE.Vector3(.69, .73, .77) },
+  },
+  vertexShader: `
+    varying vec3 vWorld;
+    varying float vDist;
+    void main() {
+      vec4 w = modelMatrix * vec4(position, 1.);
+      vWorld = w.xyz;
+      vec4 mv = viewMatrix * w;
+      vDist = -mv.z;
+      gl_Position = projectionMatrix * mv;
+    }`,
+  fragmentShader: `
+    uniform sampler2D tNoise;
+    uniform float uTime, uOpacity;
+    uniform vec3 uFogColor, uLight, uShadow;
+    varying vec3 vWorld;
+    varying float vDist;
+    void main() {
+      if (uOpacity <= 0.) discard;
+      vec2 p = vWorld.xz;
+      float t = uTime;
+      float big = texture2D(tNoise, p * .006 + vec2(.0015 * t, 0.)).r;
+      float mid = texture2D(tNoise, p * .02 + big * .3 - vec2(.002 * t, 0.)).g;
+      float fine = texture2D(tNoise, p * .07 + mid * .2 + vec2(.004 * t)).b;
+      float n = big * .5 + mid * .35 + fine * .15;
+      vec3 col = mix(uShadow, uLight, smoothstep(.32, .62, n));
+      col = mix(col, uFogColor, smoothstep(10., 200., vDist));
+      gl_FragColor = vec4(col, uOpacity);
+    }`,
+  depthWrite: false, transparent: true,
+});
+const deck = new THREE.Mesh(new THREE.PlaneGeometry(700, 700), deckMat);
+deck.rotation.x = -Math.PI / 2;
+deck.position.y = -.4;
+deck.renderOrder = -1;
+scene.add(deck);
+
+// Условная ель: ярусы-конусы, сужающиеся к верхушке. Это заглушка под фото или 3D-модель.
+// Свет простой, грани плоские; у основания ель растворяется в облаках, вдали — в дымке
+const treeMat = new THREE.ShaderMaterial({
+  uniforms: {
+    uColor: { value: new THREE.Vector3(.2, .25, .29) },
+    uCloud: { value: new THREE.Vector3(.93, .945, .955) },
+    uFogColor: { value: new THREE.Vector3(...FOG) },
+  },
+  vertexShader: `
+    varying vec3 vWorld;
+    varying float vDist;
+    void main() {
+      vec4 w = modelMatrix * vec4(position, 1.);
+      vWorld = w.xyz;
+      vec4 mv = viewMatrix * w;
+      vDist = -mv.z;
+      gl_Position = projectionMatrix * mv;
+    }`,
+  fragmentShader: `
+    uniform vec3 uColor, uCloud, uFogColor;
+    varying vec3 vWorld;
+    varying float vDist;
+    void main() {
+      if (vWorld.y < -.2) discard;                                      // под облаками ели не видно
+      vec3 n = normalize(cross(dFdx(vWorld), dFdy(vWorld)));
+      float diff = .62 + .38 * max(dot(n, normalize(vec3(-.6, .7, .4))), 0.);
+      vec3 col = uColor * diff;
+      col = mix(col, uCloud, smoothstep(3.2, -.4, vWorld.y));          // уходит в облака
+      col = mix(col, uFogColor, smoothstep(6., 190., vDist) * .92);   // воздушная перспектива
+      gl_FragColor = vec4(col, 1.);
+    }`,
+});
+function makeTree(x, z, top, seed) {
+  const g = new THREE.Group();
+  const base = -6, H = top - base;
+  const tiers = 10;
+  const rnd = n => { const s = Math.sin(seed * 12.9898 + n * 78.233) * 43758.5453; return s - Math.floor(s); };
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(.12, .3, H * .8, 6), treeMat);
+  trunk.position.y = base + H * .4;
+  g.add(trunk);
+  for (let i = 0; i < tiers; i++) {
+    const f = i / (tiers - 1);
+    const h = H * .17 * (1 - f * .3);
+    const r = Math.pow(1 - f, 1.15) * H * .11 + .35;
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(r, h, 7), treeMat);
+    const yc = base + H * .22 + f * (H - h / 2 - H * .22);
+    cone.position.set((rnd(i) - .5) * .3, yc, (rnd(i + 9) - .5) * .3);
+    cone.rotation.set((rnd(i + 3) - .5) * .14, rnd(i + 5) * Math.PI, (rnd(i + 7) - .5) * .14);
+    g.add(cone);
+  }
+  g.position.set(x, 0, z);
+  g.rotation.z = (rnd(20) - .5) * .05;
+  scene.add(g);
+}
+// [x, z, высота верхушки над облаками]. Камера стоит на x = 0 и смотрит прямо вперёд.
+[
+  // перед камерой — только справа: левая половина первого кадра свободна под текст
+  [4.5, -14, 10], [8.5, -20, 8], [13, -28, 9.6], [6, -34, 7.4], [18, -42, 11],
+  [9, -48, 7], [25, -55, 9.2], [12, -68, 8.6], [32, -82, 10.4], [18, -100, 8.2], [44, -110, 9],
+  // слева — за краем первого кадра: появляются, когда камера отъезжает
+  [-40, -30, 9.6], [-55, -60, 10.2], [-70, -90, 9.4], [-30, 5, 10], [-48, 15, 8.6],
+  // позади стартовой точки: камера отъезжает мимо них, и они входят в кадр с обеих сторон
+  [-12, 12, 9], [-22, 24, 8.4], [-9, 32, 7.6], [-28, 38, 9], [16, 15, 9], [30, 30, 8.2], [11, 40, 7.2],
+].forEach(([x, z, top], i) => makeTree(x, z, top, i + 1));
+
+// Облачные «клубы»: плоскости, всегда повёрнутые к камере, размытые шумом.
+// Стоят в пространстве — перед елями, между ними и позади, поэтому уходят вдаль вместе со сценой
+const puffs = [];
+{
+  let s = 7;
+  const r = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+  // клубы над морем облаков — дают рельеф
+  for (let i = 0; i < 300; i++) {
+    const z = 52 - r() * 190;
+    const spread = 26 + (60 - z) * .5;
+    puffs.push({ x: (r() - .5) * 2 * spread, y: .6 + r() * 2.4, z, sx: 10 + r() * 16, sy: 5 + r() * 6, a: .85 + r() * .15, span: spread });
+  }
+  // клочья у стволов и между деревьями
+  for (let i = 0; i < 80; i++) {
+    const z = 30 - r() * 125;
+    const spread = 22 + (40 - z) * .45;
+    puffs.push({ x: (r() - .5) * 2 * spread, y: 1 + r() * 5.5, z, sx: 4 + r() * 7, sy: 2 + r() * 3, a: .35 + r() * .35, span: spread });
+  }
+  // редкие близкие клубы перед камерой
+  for (let i = 0; i < 10; i++) {
+    puffs.push({ x: (r() - .5) * 26, y: 2.5 + r() * 5, z: -2 - r() * 10, sx: 6 + r() * 6, sy: 3 + r() * 3, a: .35 + r() * .2, span: 24 });
+  }
+  // толща облаков под морем: сквозь неё камера ныряет к разрезу. Сверху плотно, книзу клубы редеют
+  for (let i = 0; i < 300; i++) {
+    const depth = Math.pow(r(), 1.6);
+    const y = -1 - depth * 105;           // все клубы выше финальной точки камеры — разрез в конце чистый
+    const spread = 40 + depth * 70;
+    const size = 1 + depth * 2.2;
+    puffs.push({ x: (r() - .5) * 2 * spread, y, z: 36 + (r() - .5) * 2 * spread * .8, sx: (6 + r() * 8) * size, sy: (4 + r() * 4) * size, a: .95 - depth * .35 });
+  }
+  puffs.forEach((p, i) => { p.seed = (i * .6180339) % 1 * 10; });
+}
+
+const puffGeo = new THREE.PlaneGeometry(1, 1);
+const seedAttr = new THREE.InstancedBufferAttribute(new Float32Array(puffs.length), 1);
+const alphaAttr = new THREE.InstancedBufferAttribute(new Float32Array(puffs.length), 1);
+puffGeo.setAttribute('aSeed', seedAttr);
+puffGeo.setAttribute('aAlpha', alphaAttr);
+
+const puffMat = new THREE.ShaderMaterial({
+  uniforms: {
+    tNoise: { value: noiseTex }, tTrail: { value: null },
+    uTime: { value: 0 }, uRes: { value: new THREE.Vector2(1, 1) },
+    uFogColor: { value: new THREE.Vector3(...FOG) }, uFogNear: { value: 10 }, uFogFar: { value: 200 },
+    uLight: { value: new THREE.Vector3(.975, .98, .985) }, uShadow: { value: new THREE.Vector3(.6, .65, .7) },
+  },
+  vertexShader: `
+    attribute float aSeed, aAlpha;
+    uniform float uFogNear, uFogFar;
+    varying vec2 vUv;
+    varying float vSeed, vAlpha, vFog;
+    void main() {
+      vUv = uv; vSeed = aSeed; vAlpha = aAlpha;
+      vec3 center = instanceMatrix[3].xyz;
+      vec2 scale = vec2(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz));
+      vec4 mv = modelViewMatrix * vec4(center, 1.);
+      mv.xy += position.xy * scale;           // плоскость всегда смотрит в камеру
+      vFog = smoothstep(uFogNear, uFogFar, -mv.z);
+      gl_Position = projectionMatrix * mv;
+    }`,
+  fragmentShader: `
+    uniform sampler2D tNoise, tTrail;
+    uniform float uTime;
+    uniform vec2 uRes;
+    uniform vec3 uFogColor, uLight, uShadow;
+    varying vec2 vUv;
+    varying float vSeed, vAlpha, vFog;
+    void main() {
+      float t = uTime;
+      vec2 sUv = gl_FragCoord.xy / uRes;
+      float tr = texture2D(tTrail, sUv).r;
+
+      // форма клуба: круг, сильно искажённый шумом, края медленно «дышат»
+      vec2 dUv = vUv;
+      dUv += .24 * (texture2D(tNoise, vUv * .35 + vSeed + vec2(.010 * t, 0.)).r - .5);
+      dUv += .12 * (texture2D(tNoise, vUv * .9 + vSeed * 1.7 - vec2(.007 * t)).g - .5);
+      dUv += .06 * tr;                       // курсор слегка сдувает край
+      float d = length((dUv - .5) * vec2(1., 1.15));
+      float cloud = smoothstep(.5, .1, d);
+      float detail = texture2D(tNoise, vUv * 1.4 + vSeed * 3. + vec2(.008 * t, .004 * t)).b;
+      cloud *= .7 + .6 * detail;
+
+      // свет сверху, тень снизу — за счёт этого клубы читаются объёмом, а не пятнами
+      float shade = clamp(smoothstep(.15, .85, dUv.y) * .9 + .15 + .45 * (detail - .5), 0., 1.);
+      vec3 col = mix(uShadow, uLight, shade);
+      col = mix(col, uFogColor, vFog * .9);
+
+      float a = clamp(cloud, 0., 1.) * vAlpha * (1. - .85 * tr);
+      gl_FragColor = vec4(col, a);
+    }`,
+  transparent: true, depthWrite: false, depthTest: true,
+});
+const puffMesh = new THREE.InstancedMesh(puffGeo, puffMat, puffs.length);
+puffMesh.frustumCulled = false;
+scene.add(puffMesh);
+
+// Ветер: клубы над морем облаков медленно сносит вправо. Уйдя за край своей полосы, клуб
+// плавно гаснет и появляется с другой стороны — далеко за краем кадра
+const WIND = .35;                         // условных метров в секунду
+const wrap = (v, span) => ((v + span) % (2 * span) + 2 * span) % (2 * span) - span;
+
+// Клубы сортируем от дальних к ближним каждый кадр — так прозрачность ложится правильно
+const tmpM = new THREE.Matrix4(), tmpV = new THREE.Vector3();
+const order = puffs.map((_, i) => i);
+function updatePuffs(time) {
+  puffs.forEach(p => {
+    p.cx = p.x; p.ca = p.a;
+    if (p.span) {
+      p.cx = wrap(p.x + WIND * time, p.span);
+      p.ca = p.a * (1 - sm(.82, 1, Math.abs(p.cx) / p.span));
+    }
+    tmpV.set(p.cx, p.y, p.z);
+    p.d = tmpV.distanceToSquared(camera.position);
+  });
+  order.sort((a, b) => puffs[b].d - puffs[a].d);
+  order.forEach((idx, slot) => {
+    const p = puffs[idx];
+    tmpM.makeScale(p.sx, p.sy, 1).setPosition(p.cx, p.y, p.z);
+    puffMesh.setMatrixAt(slot, tmpM);
+    seedAttr.array[slot] = p.seed;
+    alphaAttr.array[slot] = p.ca;
+  });
+  puffMesh.instanceMatrix.needsUpdate = true;
+  seedAttr.needsUpdate = alphaAttr.needsUpdate = true;
+}
+
+// Пряди ветра: длинные полупрозрачные полосы над облаками, плывут быстрее клубов.
+// Еле заметны и исчезают, когда камера ныряет
+const wisps = [];
+{
+  let s = 31;
+  const r = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+  for (let i = 0; i < 46; i++) {
+    const z = 50 - r() * 150;
+    const span = 40 + (60 - z) * .5;
+    wisps.push({ x: (r() - .5) * 2 * span, y: 1.8 + r() * 6, z, span, sx: 18 + r() * 30, sy: .9 + r() * 1.6,
+                 speed: 1.6 + r() * 1.6, seed: r() * 10, a: .16 + r() * .2 });
+  }
+}
+const wispGeo = new THREE.PlaneGeometry(1, 1);
+const wSeed = new THREE.InstancedBufferAttribute(new Float32Array(wisps.length), 1);
+const wAlpha = new THREE.InstancedBufferAttribute(new Float32Array(wisps.length), 1);
+wispGeo.setAttribute('aSeed', wSeed);
+wispGeo.setAttribute('aAlpha', wAlpha);
+const wispMat = new THREE.ShaderMaterial({
+  uniforms: {
+    tNoise: { value: noiseTex }, tTrail: { value: null },
+    uTime: { value: 0 }, uRes: { value: new THREE.Vector2(1, 1) }, uWind: { value: 1 },
+    uFogColor: { value: new THREE.Vector3(...FOG) }, uFogNear: { value: 10 }, uFogFar: { value: 200 },
+  },
+  vertexShader: puffMat.vertexShader,
+  fragmentShader: `
+    uniform sampler2D tNoise, tTrail;
+    uniform float uTime, uWind;
+    uniform vec2 uRes;
+    uniform vec3 uFogColor;
+    varying vec2 vUv;
+    varying float vSeed, vAlpha, vFog;
+    void main() {
+      float tr = texture2D(tTrail, gl_FragCoord.xy / uRes).r;
+      // рваная полоса: шум сильно растянут вдоль ветра
+      float n = texture2D(tNoise, vec2(vUv.x * .5 + vSeed - uTime * .02, vUv.y * .25 + vSeed * 2.)).r;
+      float n2 = texture2D(tNoise, vec2(vUv.x * 1.6 - uTime * .035 + vSeed, vUv.y * .6)).g;
+      float yc = .5 + .25 * (n - .5);
+      float band = 1. - smoothstep(0., .32 + .15 * n2, abs(vUv.y - yc));
+      float ends = smoothstep(0., .3, vUv.x) * smoothstep(1., .7, vUv.x);
+      float a = band * ends * smoothstep(.35, .75, n * .6 + n2 * .6) * vAlpha * uWind * (1. - .8 * tr);
+      vec3 col = mix(vec3(.985, .988, .99), uFogColor, vFog * .9);
+      gl_FragColor = vec4(col, a);
+    }`,
+  transparent: true, depthWrite: false, depthTest: true,
+});
+const wispMesh = new THREE.InstancedMesh(wispGeo, wispMat, wisps.length);
+wispMesh.frustumCulled = false;
+scene.add(wispMesh);
+function updateWisps(time) {
+  wisps.forEach((w, i) => {
+    const x = wrap(w.x + w.speed * time, w.span);
+    tmpM.makeScale(w.sx, w.sy, 1).setPosition(x, w.y, w.z);
+    wispMesh.setMatrixAt(i, tmpM);
+    wSeed.array[i] = w.seed;
+    wAlpha.array[i] = w.a * (1 - sm(.8, 1, Math.abs(x) / w.span));
+  });
+  wispMesh.instanceMatrix.needsUpdate = true;
+  wSeed.needsUpdate = wAlpha.needsUpdate = true;
+}
+
+// ── Разрез: земля глубоко под облаками, в той же сцене. Камера опускается к нему сквозь те же клубы ──
+const MINE_W = 210, MINE_H = 140;     // пропорции фото 3:2
+const mineTex = new THREE.TextureLoader().setCrossOrigin('anonymous').load(IMG_MINE);
+mineTex.anisotropy = 8;
+const groundMat = new THREE.ShaderMaterial({
+  uniforms: {
+    tMine: { value: mineTex }, uHaze: { value: 1 },
+    uHazeColor: { value: new THREE.Vector3(...BELOW) }, uEdge: { value: new THREE.Vector3(...BELOW) },
+  },
+  vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`,
+  fragmentShader: `
+    uniform sampler2D tMine;
+    uniform float uHaze;
+    uniform vec3 uHazeColor, uEdge;
+    varying vec2 vUv;
+    void main() {
+      // плоскость в 3 раза больше фото: фото в центре, вокруг — сумрачная земля без видимой рамки
+      vec2 uv = (vUv - .5) * 3. + .5;
+      vec3 col = texture2D(tMine, clamp(uv, 0., 1.)).rgb;
+      float lum = dot(col, vec3(.299, .587, .114));
+      col = mix(vec3(lum), col, .8) * vec3(.92, .92, .9);
+      float e = min(min(uv.x, 1. - uv.x), min(uv.y, 1. - uv.y));
+      col = mix(uEdge, col, smoothstep(-.02, .14, e));
+      // пока камера в облаках, земля скрыта дымкой
+      col = mix(col, uHazeColor, uHaze);
+      gl_FragColor = vec4(col, 1.);
+    }`,
+});
+const GROUND_Y = -300;
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(MINE_W * 3, MINE_H * 3), groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.set(0, GROUND_Y, 30);
+scene.add(ground);
+
+// ── Размеры ──
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h, false);
+  renderer.domElement.style.width = '100%';
+  renderer.domElement.style.height = '100%';
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  const buf = renderer.getDrawingBufferSize(new THREE.Vector2());
+  puffMat.uniforms.uRes.value.copy(buf);
+  wispMat.uniforms.uRes.value.copy(buf);
+  trailRT.forEach(rt => rt.dispose());
+  const tw = Math.max(64, buf.x >> 2), th = Math.max(64, buf.y >> 2);
+  trailRT = [0, 1].map(() => new THREE.WebGLRenderTarget(tw, th, { depthBuffer: false }));
+  trailMat.uniforms.uAspect.value = buf.x / buf.y;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ── Прокрутка и мышь ──
+const story = document.getElementById('story');
+let target = 0, prog = 0;
+function readScroll() {
+  const max = story.offsetHeight - window.innerHeight;
+  target = Math.min(1, Math.max(0, window.scrollY / max));
+}
+window.addEventListener('scroll', readScroll, { passive: true });
+readScroll();
+
+let mx = .5, my = .5, pmx = .5, pmy = .5, smx = .5, smy = .5, moved = false;
+window.addEventListener('pointermove', e => {
+  mx = e.clientX / innerWidth; my = 1 - e.clientY / innerHeight;
+  if (!moved) { pmx = mx; pmy = my; moved = true; }
+});
+
+// ── Путь камеры ──
+// Камера всегда смотрит прямо вперёд (x взгляда = x камеры) — по горизонтали не поворачивается.
+// Меняется только наклон, и только при нырке.
+// 1) крупный план верхушки → 2) отъезд назад почти на той же высоте →
+// 3) сразу вниз, взгляд опускается в облака → 4) сквозь толщу облаков → 5) над разрезом
+const KEYS = [
+  { at: 0,   pos: new THREE.Vector3(0, 8.4, 3),     look: new THREE.Vector3(0, 7, -14) },
+  { at: .3,  pos: new THREE.Vector3(0, 9.2, 62),    look: new THREE.Vector3(0, 4.2, -30) },
+  { at: .46, pos: new THREE.Vector3(0, 1.5, 54),    look: new THREE.Vector3(0, -30, 14) },
+  { at: .66, pos: new THREE.Vector3(0, -30, 42),    look: new THREE.Vector3(0, GROUND_Y, 31) },
+  { at: 1,   pos: new THREE.Vector3(0, 0, 31.6),    look: new THREE.Vector3(0, GROUND_Y, 30) },   // высота — по экрану
+];
+// Финальная высота над разрезом: фото заполняет экран, как фон «cover»
+function endHeight() {
+  const t = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+  return Math.min(.92 * MINE_H / t, .92 * MINE_W / (t * camera.aspect));
+}
+const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+const ease = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
+function placeCamera(p, time) {
+  KEYS[4].pos.y = GROUND_Y + endHeight();
+  camPos.copy(KEYS[0].pos); camLook.copy(KEYS[0].look);
+  for (let i = 1; i < KEYS.length; i++) {
+    // отъезд — плавный старт и остановка; дальше нырок одним непрерывным движением
+    const k = i === 1 ? ease(sm(KEYS[0].at, KEYS[1].at, p)) : sm(KEYS[i - 1].at, KEYS[i].at, p);
+    camPos.lerp(KEYS[i].pos, k);
+    camLook.lerp(KEYS[i].look, k);
+  }
+  // лёгкое «парение» и реакция на мышь — сдвиг камеры вместе с точкой взгляда, без поворота
+  const ox = Math.sin(time * .11) * .35 + (smx - .5) * 1.2;
+  const oy = Math.sin(time * .17) * .18 + (smy - .5) * .6;
+  camPos.x += ox; camLook.x += ox;
+  camPos.y += oy; camLook.y += oy;
+  camera.position.copy(camPos);
+  // когда камера смотрит вниз, «верх» кадра — вперёд по маршруту, иначе кадр заваливается набок
+  const down = sm(.46, .66, p);
+  camera.up.set(0, 1 - down, -down).normalize();
+  camera.lookAt(camLook);
+  sky.position.copy(camPos);
+}
+
+const capHero = document.getElementById('capHero');
+const capIntro = document.getElementById('capIntro');
+const capMine = document.getElementById('capMine');
+const scrim = document.getElementById('scrim');
+const header = document.getElementById('header');
+const route = document.getElementById('route');
+const hint = document.getElementById('hint');
+const routeFill = document.getElementById('routeFill');
+const routeKm = document.getElementById('routeKm');
+
+// ── Третий экран: карьерный самосвал из точек ──
+// Точки берутся из картинки с прозрачным фоном: где есть самосвал — есть точка,
+// яркость точки — светотень картинки плюс подсветка контуров.
+// Сначала точки рассыпаны облаком, при прокрутке слетаются в изображение
+const IMG_TRUCK = window.BELAZ_SRC || '../assets/belaz.webp';
+const globeSec = document.getElementById('globeSec');
+const globeStage = document.getElementById('globeStage');
+const capGlobe = document.getElementById('capGlobe');
+const gRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+gRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+globeStage.prepend(gRenderer.domElement);
+const gScene = new THREE.Scene();
+const gCamera = new THREE.PerspectiveCamera(35, 1, .1, 50);
+gCamera.position.set(0, 0, 4.4);
+const globe = new THREE.Group();
+gScene.add(globe);
+const gMat = new THREE.ShaderMaterial({
+  uniforms: { uProg: { value: 0 }, uTime: { value: 0 }, uPixel: { value: 1 } },
+  vertexShader: `
+    attribute vec3 aStart;
+    attribute float aRand, aBright;
+    uniform float uProg, uTime, uPixel;
+    varying float vAlpha;
+    void main() {
+      // каждая точка прилетает со своей задержкой — изображение собирается постепенно, а не разом
+      float t = clamp((uProg - aRand * .4) / .6, 0., 1.);
+      t = t * t * (3. - 2. * t);
+      vec3 p = mix(aStart, position, t);
+      p += (1. - t) * .06 * vec3(sin(uTime * .5 + aRand * 40.), cos(uTime * .4 + aRand * 30.), sin(uTime * .3 + aRand * 20.));
+      vec4 mv = modelViewMatrix * vec4(p, 1.);
+      float twinkle = .8 + .2 * sin(uTime * 1.7 + aRand * 60.);
+      vAlpha = mix(.12, 1., aBright) * twinkle * mix(.55, 1., t);
+      gl_PointSize = mix(1.3, 2.4, aBright) * (.85 + .4 * fract(aRand * 7.)) * uPixel * .5 / -mv.z;
+      gl_Position = projectionMatrix * mv;
+    }`,
+  // негатив: тёмно-серые точки на белом фоне, обычное наложение вместо свечения
+  fragmentShader: `
+    varying float vAlpha;
+    void main() {
+      float d = length(gl_PointCoord - .5);
+      gl_FragColor = vec4(vec3(.11, .13, .15), smoothstep(.5, .15, d) * vAlpha);
+    }`,
+  transparent: true, depthWrite: false,
+});
+{
+  const img = new Image();
+  img.onload = () => {
+    const W = img.width, H = img.height;
+    const c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    const g2 = c.getContext('2d');
+    g2.drawImage(img, 0, 0);
+    const data = g2.getImageData(0, 0, W, H).data;
+    const alphaAt = (x, y) => data[(y * W + x) * 4 + 3] / 255;
+    const lumAt = (x, y) => data[(y * W + x) * 4] / 255;
+    let s = 11;
+    const r = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+    const pos = [], start = [], rand = [], bright = [];
+    const STEP = 4;                                       // шаг сетки в пикселях картинки
+    const SCALE = 1.75 / H;                               // высота самосвала в сцене ≈ 1,75
+    for (let y = STEP; y < H - STEP; y += STEP) {
+      for (let x = STEP; x < W - STEP; x += STEP) {
+        const jx = Math.min(W - 2, Math.max(1, Math.round(x + (r() - .5) * STEP)));
+        const jy = Math.min(H - 2, Math.max(1, Math.round(y + (r() - .5) * STEP)));
+        if (alphaAt(jx, jy) < .5) continue;
+        const l = lumAt(jx, jy);
+        // контуры: перепад яркости с соседями — так читаются колёса, решётка, лестницы
+        const edge = Math.min(1, (Math.abs(lumAt(jx + 1, jy) - lumAt(jx - 1, jy)) + Math.abs(lumAt(jx, jy + 1) - lumAt(jx, jy - 1))) * 3);
+        const b = Math.min(1, Math.pow(l, 1.6) * .75 + edge * .6);
+        if (b < .08 && r() > .35) continue;               // в глубоких тенях точки реже
+        pos.push((jx - W / 2) * SCALE, -(jy - H / 2) * SCALE, (l - .5) * .12 + (r() - .5) * .04);
+        // рассыпанное облако: шире изображения и сплюснутое, как эллипс в примере
+        const a = r() * Math.PI * 2, bb = Math.acos(2 * r() - 1), d = 1.2 + Math.pow(r(), .7) * 2.2;
+        start.push(Math.sin(bb) * Math.cos(a) * d * 1.35, Math.cos(bb) * d * .75, Math.sin(bb) * Math.sin(a) * d);
+        rand.push(r());
+        bright.push(b);
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('aStart', new THREE.Float32BufferAttribute(start, 3));
+    geo.setAttribute('aRand', new THREE.Float32BufferAttribute(rand, 1));
+    geo.setAttribute('aBright', new THREE.Float32BufferAttribute(bright, 1));
+    const pts = new THREE.Points(geo, gMat);
+    pts.frustumCulled = false;
+    globe.add(pts);
+  };
+  img.src = IMG_TRUCK;
+}
+function resizeGlobe() {
+  const w = globeStage.clientWidth, h = globeStage.clientHeight;
+  gRenderer.setSize(w, h, false);
+  gCamera.aspect = w / h;
+  gCamera.updateProjectionMatrix();
+  gMat.uniforms.uPixel.value = gRenderer.getPixelRatio() * h / 100;
+  // на широком экране самосвал правее, слева — текст; на узком — по центру и чуть ниже текста
+  const wide = gCamera.aspect > 1.2;
+  globe.position.set(wide ? .7 : 0, wide ? -.05 : -.55, 0);
+  globe.scale.setScalar(wide ? .95 : Math.min(1, gCamera.aspect * .95));
+}
+window.addEventListener('resize', resizeGlobe);
+resizeGlobe();
+
+let gProg = 0;
+function renderGlobe(time, dt) {
+  const vh = window.innerHeight;
+  const top = globeSec.getBoundingClientRect().top;
+  if (top > vh || top + globeSec.offsetHeight < 0) return;     // экран не виден — не рисуем
+  const local = -top;                                          // сколько прокручено внутри секции
+  if (top < vh * .5) routeKm.textContent = 'Добыча';
+  // экран белый — шапка и шкала маршрута тёмные, пока он под ними
+  if (top < vh * .5 && top + globeSec.offsetHeight > vh * .5) {
+    header.classList.remove('light');
+    route.classList.remove('light');
+  }
+  const q = Math.min(1, Math.max(0, (local + vh * .6) / (globeSec.offsetHeight - vh * .4)));
+  gProg += (Math.min(1, q / .7) - gProg) * Math.min(1, dt * 4);
+  gMat.uniforms.uProg.value = gProg;
+  gMat.uniforms.uTime.value = time;
+  // лёгкое покачивание и поворот от прокрутки и мыши — точки на разной глубине дают объём
+  globe.rotation.set((smy - .5) * .12, Math.sin(time * .15) * .06 + (q - .5) * .3 + (smx - .5) * .2, 0);
+  gRenderer.render(gScene, gCamera);
+  // текст поднимается снизу вместе с прокруткой и останавливается слева от самосвала
+  const stopAt = gCamera.aspect > 1.2 ? .38 : .16;            // на узком экране текст выше самосвала
+  capGlobe.style.transform = `translateY(${Math.max(vh * stopAt, vh * 1.05 - local)}px)`;
+}
+
+// ── Четвёртый экран: видео из точек ──
+// Сетка точек неподвижна, каждый кадр точка берёт цвет своего пикселя видео.
+// Фон ролика белый, поэтому точка горит там, где кадр темнее или насыщеннее белого:
+// тени террас, цифры, текст. Сборка из облака при прокрутке — как у самосвала
+const VIDEO_SRC = '../assets/' + encodeURIComponent('Корпоративный_сайт_для_угольной_компании (1080p).mp4');
+const CLIP = [47, 70];                                       // отрезок ролика в секундах, крутится по кругу
+const vidSec = document.getElementById('vidSec');
+const vidStage = document.getElementById('vidStage');
+const video = document.createElement('video');
+video.muted = true; video.playsInline = true; video.preload = 'auto';
+video.src = VIDEO_SRC;
+video.addEventListener('loadedmetadata', () => { video.currentTime = CLIP[0]; });
+video.addEventListener('timeupdate', () => {
+  if (video.currentTime >= CLIP[1] || video.currentTime < CLIP[0] - .5) video.currentTime = CLIP[0];
+});
+// Открыто двойным щелчком (file://) — Chrome не даёт читать пиксели видео, эффект невозможен.
+// Тогда показываем подсказку, как открыть через локальный сервер
+const FILE_MODE = location.protocol === 'file:';
+if (FILE_MODE) {
+  const note = document.createElement('div');
+  note.className = 'vid-note';
+  note.innerHTML = 'Экран с&nbsp;видео из&nbsp;точек работает только через локальный сервер.<br>' +
+    'Откройте прототип по&nbsp;адресу <b>http://localhost:8083</b>&nbsp;— при открытии файла двойным щелчком браузер не&nbsp;даёт читать кадры видео.';
+  document.getElementById('vidStage').appendChild(note);
+}
+const vTex = new THREE.VideoTexture(video);
+vTex.minFilter = vTex.magFilter = THREE.LinearFilter;
+vTex.generateMipmaps = false;
+
+const vRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+vRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+vidStage.prepend(vRenderer.domElement);
+const vScene = new THREE.Scene();
+const vCamera = new THREE.PerspectiveCamera(35, 1, .1, 50);
+vCamera.position.set(0, 0, 4.4);
+const vGroup = new THREE.Group();
+vScene.add(vGroup);
+const VW = 3.4, VH = VW * 9 / 16;                           // размер «экрана» из точек в сцене
+const vMat = new THREE.ShaderMaterial({
+  uniforms: { tVideo: { value: vTex }, uProg: { value: 0 }, uTime: { value: 0 }, uPixel: { value: 1 }, uReady: { value: 0 } },
+  vertexShader: `
+    attribute vec3 aStart;
+    attribute vec2 aUv;
+    attribute float aRand;
+    uniform sampler2D tVideo;
+    uniform float uProg, uTime, uPixel, uReady;
+    varying float vAlpha;
+    void main() {
+      float t = clamp((uProg - aRand * .4) / .6, 0., 1.);
+      t = t * t * (3. - 2. * t);
+      vec3 p = mix(aStart, position, t);
+      p += (1. - t) * .06 * vec3(sin(uTime * .5 + aRand * 40.), cos(uTime * .4 + aRand * 30.), sin(uTime * .3 + aRand * 20.));
+      vec4 mv = modelViewMatrix * vec4(p, 1.);
+      // яркость точки из кадра: тёмное и цветное горит, белый фон — пусто
+      vec3 c = texture2D(tVideo, aUv).rgb;
+      float ink = 1. - dot(c, vec3(.299, .587, .114));
+      float sat = max(c.r, max(c.g, c.b)) - min(c.r, min(c.g, c.b));
+      // кривая растягивает светлые тени — так проявляются террасы на почти белом фоне
+      // пока кадров нет (видео грузится или браузер не даёт их читать) — точки не вспыхивают сплошным шумом
+      float b = pow(smoothstep(.025, .45, ink + sat * .35), .6) * uReady;
+      float twinkle = .85 + .15 * sin(uTime * 1.7 + aRand * 60.);
+      vAlpha = max(b * mix(.5, 1., t), (1. - t) * .3) * twinkle;
+      gl_PointSize = mix(.8, 2.5, max(b, 1. - t)) * (.85 + .4 * fract(aRand * 7.)) * uPixel * .5 / -mv.z;
+      gl_Position = projectionMatrix * mv;
+    }`,
+  fragmentShader: `
+    varying float vAlpha;
+    void main() {
+      float d = length(gl_PointCoord - .5);
+      gl_FragColor = vec4(vec3(.94, .95, .97), smoothstep(.5, .15, d) * vAlpha);
+    }`,
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+});
+{
+  const COLS = 300, ROWS = 169;
+  let s = 23;
+  const r = () => { s = (s * 16807) % 2147483647; return s / 2147483647; };
+  const pos = [], start = [], uvs = [], rand = [];
+  for (let j = 0; j < ROWS; j++) {
+    for (let i = 0; i < COLS; i++) {
+      // лёгкий разброс внутри ячейки — без муара от ровной сетки
+      const u = (i + .5 + (r() - .5) * .6) / COLS, v = (j + .5 + (r() - .5) * .6) / ROWS;
+      pos.push((u - .5) * VW, (v - .5) * VH, (r() - .5) * .04);
+      uvs.push(u, v);
+      const a = r() * Math.PI * 2, bb = Math.acos(2 * r() - 1), d = 1.2 + Math.pow(r(), .7) * 2.2;
+      start.push(Math.sin(bb) * Math.cos(a) * d * 1.35, Math.cos(bb) * d * .75, Math.sin(bb) * Math.sin(a) * d);
+      rand.push(r());
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('aStart', new THREE.Float32BufferAttribute(start, 3));
+  geo.setAttribute('aUv', new THREE.Float32BufferAttribute(uvs, 2));
+  geo.setAttribute('aRand', new THREE.Float32BufferAttribute(rand, 1));
+  const pts = new THREE.Points(geo, vMat);
+  pts.frustumCulled = false;
+  vGroup.add(pts);
+}
+function resizeVideo() {
+  const w = vidStage.clientWidth, h = vidStage.clientHeight;
+  vRenderer.setSize(w, h, false);
+  vCamera.aspect = w / h;
+  vCamera.updateProjectionMatrix();
+  vMat.uniforms.uPixel.value = vRenderer.getPixelRatio() * h / 100;
+  // «экран» из точек целиком помещается по ширине
+  const visW = 2 * Math.tan(THREE.MathUtils.degToRad(vCamera.fov / 2)) * vCamera.position.z * vCamera.aspect;
+  vGroup.scale.setScalar(Math.min(1, visW * .9 / VW));
+}
+window.addEventListener('resize', resizeVideo);
+resizeVideo();
+
+let vProg = 0;
+function renderVideo(time, dt) {
+  const vh = window.innerHeight;
+  const top = vidSec.getBoundingClientRect().top;
+  const visible = top < vh && top + vidSec.offsetHeight > 0;
+  // видео играет, только пока экран виден
+  if (visible && video.paused) video.play().catch(() => {});
+  if (!visible && !video.paused) video.pause();
+  if (!visible) return;
+  const local = -top;
+  if (top < vh * .5) routeKm.textContent = 'Масштаб';
+  const q = Math.min(1, Math.max(0, (local + vh * .6) / (vidSec.offsetHeight - vh * .4)));
+  vProg += (Math.min(1, q / .7) - vProg) * Math.min(1, dt * 4);
+  vMat.uniforms.uProg.value = vProg;
+  vMat.uniforms.uTime.value = time;
+  // кадры доступны: видео отдаёт картинку и страница открыта не как файл
+  const ready = !FILE_MODE && video.readyState >= 2 ? 1 : 0;
+  vMat.uniforms.uReady.value += (ready - vMat.uniforms.uReady.value) * Math.min(1, dt * 3);
+  vGroup.rotation.set((smy - .5) * .1, Math.sin(time * .15) * .04 + (smx - .5) * .15, 0);
+  vRenderer.render(vScene, vCamera);
+}
+
+let ping = 0, lastT = 0;
+function frame(tms) {
+  const time = tms / 1000;
+  const dt = Math.min(.25, lastT ? time - lastT : 1 / 60);
+  lastT = time;
+  prog += (target - prog) * Math.min(1, dt * 5);
+  smx += (mx - smx) * Math.min(1, dt * 3); smy += (my - smy) * Math.min(1, dt * 3);
+  const p = prog;
+
+  // 1. След курсора
+  const src = trailRT[ping], dst = trailRT[1 - ping];
+  const speed = Math.hypot(mx - pmx, my - pmy);
+  trailMat.uniforms.tPrev.value = src.texture;
+  trailMat.uniforms.uMouse.value.set(mx, my);
+  trailMat.uniforms.uMousePrev.value.set(pmx, pmy);
+  trailMat.uniforms.uForce.value = moved ? Math.min(.3, speed * 10) : 0;
+  trailMat.uniforms.uDecay.value = Math.pow(.965, dt * 60);
+  renderer.setRenderTarget(dst);
+  renderer.render(trailScene, orthoCam);
+  pmx = mx; pmy = my;
+  ping = 1 - ping;
+
+  // 2. Сцена
+  renderer.setRenderTarget(null);
+  renderer.clear();
+  placeCamera(p, time);
+  updatePuffs(time);
+  updateWisps(time);
+  wispMat.uniforms.uTime.value = time;
+  wispMat.uniforms.tTrail.value = dst.texture;
+  wispMat.uniforms.uWind.value = 1 - sm(.3, .44, p);
+  puffMat.uniforms.uTime.value = time;
+  deckMat.uniforms.uTime.value = time;
+  puffMat.uniforms.tTrail.value = dst.texture;
+  groundMat.uniforms.uHaze.value = 1 - sm(.5, .8, p);
+  // «пол» облаков растворяется, когда камера к нему подлетает, — дальше видны только клубы
+  deckMat.uniforms.uOpacity.value = sm(-.5, 5, camera.position.y);
+  renderer.render(scene, camera);
+
+  // 3. Тексты едут вместе с прокруткой, как обычная страница, и уходят за верх экрана.
+  // Второй текст поднимается снизу, пока первый ещё на экране
+  const vh = window.innerHeight, sy = window.scrollY;
+  capHero.style.transform = `translateY(${vh * .3 - sy}px)`;
+  capIntro.style.transform = `translateY(${vh * 1.02 - sy}px)`;
+  capMine.style.transform = `translateY(${(1 - sm(.7, .86, p)) * vh}px)`;
+  scrim.style.opacity = sm(.72, .86, p);
+
+  const light = p > .66;
+  header.classList.toggle('light', light);
+  route.classList.toggle('light', light);
+  hint.style.opacity = 1 - sm(0, .03, p);
+  routeFill.style.height = `${p * 100}%`;
+  routeKm.textContent = p > .6 ? 'Разрез' : '0 км';
+
+  renderGlobe(time, dt);
+  renderVideo(time, dt);
+
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
