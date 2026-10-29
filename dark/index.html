@@ -621,7 +621,7 @@ scene.add(sky);
 // Каждая точка сетки видео сначала — звезда на небе: далеко, мерцает, её закрывают стены разреза.
 // Когда камера вылетела из разреза, звёзды срываются с неба, летят к зрителю и встают в сетку
 // прямо перед камерой; яркость точки берётся из кадра ролика (чёрный фон — пусто, самосвал — светится)
-const VIDEO_TRUCK = '../videos/elga-belaz-dark.mp4';
+const VIDEO_TRUCK = '../videos/elga-belaz-new.mp4';     // 8 с, 240 кадров при 30 к/с — ролик снят под сюжет целиком
 const FILE_MODE = location.protocol === 'file:';           // при открытии двойным щелчком кадры видео читать нельзя
 const truckVideo = document.createElement('video');
 truckVideo.muted = true; truckVideo.playsInline = true; truckVideo.preload = 'auto';   // не играет само — кадр выбирает скролл
@@ -638,9 +638,9 @@ const nextTex = new THREE.VideoTexture(nextVideo);
 nextTex.minFilter = nextTex.magFilter = THREE.LinearFilter;
 nextTex.generateMipmaps = false;
 
-// какой отрезок ролика идёт от скролла, в секундах: в ролике с самосвалом он целиком в кадре с 2,0 до 3,4 с
-// (до этого кадр пустой, после — уезжает за край)
-const TRUCK_CLIP = [2.0, 3.4];
+// какой отрезок ролика идёт от скролла, в секундах: ролик целиком — от начала сборки до конца перехода в поезд
+// (кадры 0–96 сборка, 96–167 собран, 167–204 разборка, 204–240 уходит в поезд)
+const TRUCK_CLIP = [0, 8];
 const LOOP_PX_PER_SEC = 12 * 30;                            // зацикленный ролик: ~12 px прокрутки на кадр при 30 к/с
 // перемотка видео по скроллу: доля 0…1 — от начала до конца отрезка; новый кадр просим, только когда прошлый уже показан
 function scrubVideo(video, f, clip) {
