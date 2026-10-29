@@ -427,9 +427,9 @@ const trailMat = new THREE.ShaderMaterial({
       float v = texture2D(tPrev, vUv).r * uDecay;
       vec2 asp = vec2(uAspect, 1.);
       float d = segDist(vUv * asp, uMousePrev * asp, uMouse * asp);
-      float blob = exp(-d * d / (.45 * .45) * 3.);     // большое размытое пятно — почти половина высоты экрана, края плавно тают
-      v += blob * uForce;
-      gl_FragColor = vec4(min(v, 1.), 0., 0., 1.);
+      float blob = exp(-d * d / (.36 * .36) * 3.);     // размытое пятно, на 20% меньше прежнего
+      v += (1. - v) * blob * uForce * .7;              // мягкое накопление: след не упирается в предел, у пятна нет границы
+      gl_FragColor = vec4(v, 0., 0., 1.);
     }`,
   depthTest: false, depthWrite: false,
 });
@@ -630,7 +630,7 @@ const truckTex = new THREE.VideoTexture(truckVideo);
 truckTex.minFilter = truckTex.magFilter = THREE.LinearFilter;
 truckTex.generateMipmaps = false;
 // следующее видео: в него разбирается и собирается самосвал — поезд, зацикленный ролик (34 кадра)
-const VIDEO_NEXT = '../videos/elga-train-dark720.mp4';
+const VIDEO_NEXT = '../videos/elga-train-new.mp4';
 const nextVideo = document.createElement('video');
 nextVideo.muted = true; nextVideo.playsInline = true; nextVideo.preload = 'auto';
 nextVideo.src = VIDEO_NEXT;
@@ -638,9 +638,10 @@ const nextTex = new THREE.VideoTexture(nextVideo);
 nextTex.minFilter = nextTex.magFilter = THREE.LinearFilter;
 nextTex.generateMipmaps = false;
 
-// какой отрезок ролика идёт от скролла, в секундах: ролик целиком — от начала сборки до конца перехода в поезд
-// (кадры 0–96 сборка, 96–167 собран, 167–204 разборка, 204–240 уходит в поезд)
-const TRUCK_CLIP = [0, 8];
+// какой отрезок ролика идёт от скролла, в секундах: от начала сборки до конца перехода в поезд;
+// хвост ролика (после 6,6 с самосвал уезжает за край) не используем — иначе во время смены картинка пустеет
+const TRUCK_CLIP = [0, 6.6];                                // до конца смены самосвал ещё в кадре (после 6,8 с он уезжает)
+let truckShown = false, nextShown = false;                 // был ли уже показан кадр ролика
 const LOOP_PX_PER_SEC = 12 * 30;                            // зацикленный ролик: ~12 px прокрутки на кадр при 30 к/с
 // перемотка видео по скроллу: доля 0…1 — от начала до конца отрезка; новый кадр просим, только когда прошлый уже показан
 function scrubVideo(video, f, clip) {
@@ -658,7 +659,7 @@ function scrubLoop(video, px) {
 }
 
 const PLANE_D = 10;                                         // на каком расстоянии перед камерой встаёт картинка
-const VSTAR_COLS = 268, VSTAR_ROWS = 151;                   // сетка точек картинки (16:9); меньше — реже точки
+const VSTAR_COLS = 420, VSTAR_ROWS = 236;                   // сетка точек картинки (16:9); меньше — реже точки
 const vstarMat = new THREE.ShaderMaterial({
   uniforms: {
     tVideo: { value: truckTex }, uReady: { value: 0 }, uAsm: { value: 0 }, uTime: { value: 0 },
@@ -696,16 +697,24 @@ const vstarMat = new THREE.ShaderMaterial({
 
       // яркость в картинке: светлое в кадре ролика светится, чёрный фон — пусто
       vec3 c = texture2D(tVideo, aUv).rgb;
-      float b = pow(smoothstep(.03, .55, dot(c, vec3(.299, .587, .114))), .75) * uReady;
-      // смена видео: точки разлетаются в стороны и собираются обратно уже в следующий ролик (у каждой своя задержка)
+      // яркость: всё, что не чёрный фон, получает заметный минимум — почти половину (тёмные части самосвала видны тусклыми точками),
+      // выше — контрастная кривая, чтобы полутона не сливались в одну яркую массу
+      float l1 = dot(c, vec3(.299, .587, .114));
+      float b = smoothstep(.012, .05, l1) * (.45 + .55 * pow(smoothstep(.03, .48, l1), 1.15)) * uReady;
+      // смена видео: самосвал разлетается по всему экрану, и из этого же роя собирается поезд (у каждой точки своя задержка)
       float mt = clamp((uMorph - aRand * .2) / .8, 0., 1.);
-      float scatter = sin(mt * 3.14159);
+      float scatter = smoothstep(0., .42, mt) * (1. - smoothstep(.58, 1., mt));   // разлёт — короткая пауза в рое — сборка
       vec3 c2 = texture2D(tVideo2, aUv).rgb;
-      // поезд светлее и с большим разбросом яркостей, чем самосвал: мягкая кривая почти по всему диапазону —
-      // светлые грани не сливаются в одну массу, тени вагонов приподняты, объём читается
-      float b2 = pow(clamp((dot(c2, vec3(.299, .587, .114)) - .05) / .8, 0., 1.), .55) * 1.15 * uReady2;
-      b = mix(b, b2, smoothstep(.35, .65, mt));
-      p += normalize(mat3(uCamMat) * vec3(aStar.x, aStar.z * .8, aStar.y - .45)) * scatter * (2.5 + 6. * aRand);
+      // поезд в ролике серый (светлое — около .55): растягиваем до полной яркости почти линейно —
+      // рёбра вагонов и тени между ними остаются разными по яркости, объём читается
+      float l2 = dot(c2, vec3(.299, .587, .114));
+      float b2 = smoothstep(.012, .05, l2) * (.45 + .65 * pow(clamp((l2 - .03) / .55, 0., 1.), .9)) * uReady2;
+      // яркость меняется, пока точки разбросаны по экрану: в рое подмена не видна, кажется — те же точки
+      b = mix(b, b2, smoothstep(.4, .6, mt));
+      // в рое у каждой точки своё случайное место на всём экране (с запасом за края) и немного в глубину
+      vec2 rs = fract(vec2(aRand * 91.7 + aStar.x * 13.1, aRand * 47.3 + aStar.z * 7.9)) - .5;
+      vec3 swarm = (uCamMat * vec4(rs.x * uPlane.x * 1.15, rs.y * uPlane.y * 1.25, -${PLANE_D}. + (fract(aRand * 23.7) - .5) * 5., 1.)).xyz;
+      p = mix(p, swarm, scatter * scatter * (3. - 2. * scatter));
       // уход к порту: точки разлетаются и гаснут
       float ot = clamp((uOut - aRand * .3) / .7, 0., 1.);
       p += normalize(mat3(uCamMat) * vec3(aStar.x, aStar.z, aStar.y)) * ot * (6. + 12. * aRand);
@@ -714,11 +723,12 @@ const vstarMat = new THREE.ShaderMaterial({
       float starA = aStarA * twinkle;
       // в полёте звезда вспыхивает — видно, как звёзды срываются с неба; на месте остаётся яркость кадра
       float flight = sin(eDir * 3.14159);                 // вспышка — вместе с поворотом, с первого мгновения сборки
-      vA = (mix(starA, b, e) + flight * (.35 + .5 * aStarA) + scatter * .2 * (.3 + aStarA)) * (1. - ot);
-      // на небе и в полёте видна только половина точек; вторая половина проявляется уже на своих местах к концу сборки
-      float late = step(.5, fract(aRand * 7.31));
+      vA = (mix(starA, b, e) + flight * (.35 + .5 * aStarA) + scatter * .1 * (.3 + aStarA)) * (1. - ot);
+      // на небе и в полёте видна только пятая часть точек (звёзд столько же, сколько было при редкой сетке);
+      // остальные проявляются уже на своих местах к концу сборки
+      float late = step(.2, fract(aRand * 7.31));
       vA *= mix(1., smoothstep(.65, 1., uAsm), late);
-      gl_PointSize = mix((1. + 1.8 * aStarA) * uPixel, uCell * mix(.35, .8, b), e) + flight * 1.5 * uPixel;
+      gl_PointSize = mix((1. + 1.8 * aStarA) * uPixel, uCell * mix(.4, 1.05, b), e) + flight * 1.5 * uPixel;
       gl_Position = projectionMatrix * viewMatrix * vec4(p, 1.);
     }`,
   fragmentShader: `
@@ -971,9 +981,13 @@ function frame(tms) {
     U.uAsm.value = asm;
     U.uCamPos.value.copy(camera.position);
     U.uCamMat.value.copy(camera.matrixWorld);
-    const ready = !FILE_MODE && truckVideo.readyState >= 2 ? 1 : 0;
+    // кадр готов — один раз и навсегда: во время перемотки браузер на миг сбрасывает готовность,
+    // и если гасить по ней яркость, картинка «дышит» при прокрутке
+    truckShown = truckShown || (!FILE_MODE && truckVideo.readyState >= 2);
+    nextShown = nextShown || (!FILE_MODE && nextVideo.readyState >= 2);
+    const ready = truckShown ? 1 : 0;
     U.uReady.value += (ready - U.uReady.value) * Math.min(1, dt * 3);
-    const ready2 = !FILE_MODE && nextVideo.readyState >= 2 ? 1 : 0;
+    const ready2 = nextShown ? 1 : 0;
     U.uReady2.value += (ready2 - U.uReady2.value) * Math.min(1, dt * 3);
     U.uMorph.value = morph;
     // экран порта: точки разлетаются и гаснут, из темноты проступает порт, камера летит над ним со скроллом
@@ -1010,12 +1024,11 @@ function frame(tms) {
     const storyMax = scrollSpan();
     const mine = placeStack(capMining, capMiningSub, mineSize, miningFrom, vh, sy);
     ASM_END = Math.max(ASM_START + .01, mine.subIn / storyMax);
-    // текст «Железной дороги» стоит дольше — так, чтобы её ролик шёл на тот же отрезок прокрутки, что ролик «Добычи»
-    // (от начала сборки самосвала до встающего текста «Дороги»): оба ролика — одной длины
-    const roadHold = Math.max(vh * TEXT_HOLD, mine.titleGone - ASM_START * storyMax - vh * .6);
-    const enrich = placeStack(capEnrich, capEnrichSub, enrichSize, mine.almostGone, vh, sy, roadHold);
+    // экран «Железной дороги» листается так же, как «Добыча»: текст стоит столько же
+    const enrich = placeStack(capEnrich, capEnrichSub, enrichSize, mine.almostGone, vh, sy);
     MORPH_START = mine.titleGone / storyMax;
-    MORPH_END = Math.max(MORPH_START + .01, enrich.subIn / storyMax);
+    // смена короткая: самосвал ещё не до конца разобрался, а поезд уже собирается (пустого промежутка нет)
+    MORPH_END = Math.max(MORPH_START + .01, Math.min(enrich.subIn, mine.titleGone + vh) / storyMax);
     // Порт: когда «Обогащение» начало уезжать, точки разлетаются и гаснут; из темноты проступает порт;
     // текст «Порт» выезжает слева, когда «Обогащение» почти уехало
     const portText = placeStack(capPort, capPortSub, portSize, enrich.almostGone, vh, sy);
