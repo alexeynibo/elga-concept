@@ -33,8 +33,8 @@
   .caption--mining { max-width: 56%; color: var(--ink-dark); top: 0; }
   .caption--mining .caption__sub, .caption--road .caption__sub { will-change: transform; }
   .caption--road { left: var(--right-col); right: var(--side); max-width: none; color: var(--ink-dark); top: 0; }
-  /* Порт: белый глиняный рендер (assets/port-light-v2.jpg) на весь экран, проступает из белого; текст — слева, как в тёмном */
-  .port-bg { position: absolute; inset: 0; z-index: 3; background: #fff url('../assets/port-light-v2.jpg') center / cover no-repeat;
+  /* Порт: белый глиняный рендер (assets/port-light-wide.jpg, выводится через WebGL) на весь экран, проступает из белого; текст — слева */
+  .port-bg { position: absolute; inset: 0; z-index: 3; background: #fff;
              opacity: 0; pointer-events: none; will-change: transform, opacity; }
   .port-bg canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .caption--port { max-width: 56%; color: var(--ink-dark); top: 0; }
@@ -110,6 +110,8 @@
 </script>
 </head>
 <body>
+<!-- экран загрузки: показывается сразу, ждёт только первый экран; тяжёлые файлы грузятся потом по очереди -->
+<script src="../shared/preloader.js" data-theme="light"></script>
 
 <header class="header" id="header">
   <a class="logo" href="../" aria-label="Эльга — к выбору концепта"><svg class="logo__svg" role="img" aria-label="Эльга" fill="currentColor" viewBox="0 0 341.91 109.96" xmlns="http://www.w3.org/2000/svg"><path d="m93.86 16.1c-10.38-10.38-24.19-16.1-38.88-16.1s-28.49 5.72-38.88 16.1c-10.38 10.39-16.1 24.2-16.1 38.88s5.72 28.49 16.1 38.88c10.39 10.39 24.19 16.1 38.88 16.1s28.49-5.72 38.88-16.1 16.1-24.19 16.1-38.88-5.72-28.49-16.1-38.88zm-75.33 68.19c0 1.2-1.52 1.72-2.26.77-6.68-8.56-10.31-19.04-10.31-30.08s3.62-21.51 10.31-30.08c.74-.95 2.26-.44 2.26.77zm66.53 9.4c-8.56 6.68-19.04 10.31-30.08 10.31s-21.51-3.62-30.08-10.31c-.95-.74-.44-2.26.77-2.26h58.62c1.2 0 1.72 1.52.77 2.26zm-60.62-8.16v-61.09h60.99v61.09zm59.85-67h-58.62c-1.2 0-1.72-1.52-.77-2.26 8.56-6.68 19.04-10.31 30.08-10.31s21.51 3.62 30.08 10.31c.95.74.44 2.26-.77 2.26zm9.4 66.52c-.74.95-2.26.44-2.26-.77v-58.61c0-1.2 1.52-1.72 2.26-.77 6.68 8.56 10.31 19.04 10.31 30.08s-3.62 21.51-10.31 30.08z"/><path d="m55.08 45.62c-5.33 0-9.65 4.32-9.65 9.65s4.32 9.65 9.65 9.65 9.65-4.32 9.65-9.65-4.32-9.65-9.65-9.65z"/><path d="m176.61 80.27v9.84h-39.46v-70.26h39.46v9.84h-28.93v19.09h21.25v9.84h-21.25v21.65z"/><path d="m231.31 80.27v9.84h-41.23v-70.26h10.53v60.41h30.7z"/><path d="m262.11 18.58c13.19 0 19.38 7.77 21.84 19.88h-10.53c-1.97-6.89-5.22-9.74-11.81-9.74-10.53 0-14.17 9.84-14.17 26.27s3.64 26.27 14.17 26.27c11.32 0 12.79-8.66 12.79-18.6v-.98h-15.94v-9.84h26.57v7.97c0 19.88-6.69 31.59-22.93 31.59-18.2 0-25.39-14.86-25.39-36.41s7.18-36.41 25.39-36.41z"/><path d="m327.44 69.25h-19.88l-3.84 20.86h-10.33l13.97-70.25h20.47l14.07 70.25h-10.53l-3.94-20.86zm-18.01-9.84h16.14l-5.31-28.73h-5.41l-5.41 28.73z"/></svg></a>
@@ -133,13 +135,13 @@
     <!-- поезд: start играет один раз, когда «Добыча» начинает уезжать; доиграл — поверх по кругу идёт петля
          (её первый кадр = последний кадр start) -->
     <div class="train-wrap" id="trainWrap">
-      <video class="train" id="train" src="../videos/elga-train-light-start.mp4" muted playsinline preload="auto"></video>
-      <video class="train train--loop" id="trainLoop" src="../videos/elga-train-light-loop.mp4" muted playsinline loop preload="auto"></video>
+      <video class="train" id="train" muted playsinline preload="auto"></video>
+      <video class="train train--loop" id="trainLoop" muted playsinline loop preload="auto"></video>
     </div>
     <div class="relief-wrap" id="reliefWrap">
-      <video class="relief" id="relief" src="../videos/elga-belaz-light-start.mp4" muted playsinline preload="auto"></video>
+      <video class="relief" id="relief" muted playsinline preload="auto"></video>
       <!-- когда ролик с рельефом доиграл — поверх него по кругу идёт петля (её первый кадр = последний кадр рельефа) -->
-      <video class="relief" id="reliefLoop" src="../videos/elga-belaz-light-loop.mp4" muted playsinline loop preload="auto"></video>
+      <video class="relief" id="reliefLoop" muted playsinline loop preload="auto"></video>
     </div>
     <svg class="maplines" id="maplines" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
     <!-- Преимущества: тексты — intro.facts (те же, что в тёмном концепте), иконки — свои, контурные -->
@@ -330,9 +332,10 @@ scene.add(sky);
 // Горы на горизонте: панорама зимнего Токинского Становика (assets/mountains-toko.jpg, 4:1) на дуге вокруг камеры —
 // как и небо, едут вместе с камерой, поэтому всегда стоят на горизонте. Низ картинки (облака) уходит под море облаков,
 // верх растворяется в небе, сами горы чуть тонут в дымке. Когда камера ныряет под облака — гаснут
+let mountainsLoaded; const mountainsReady = new Promise(r => { mountainsLoaded = r; });   // для экрана загрузки
 const mountMat = new THREE.ShaderMaterial({
   uniforms: {
-    tMap: { value: new THREE.TextureLoader().load('../assets/mountains-toko.jpg') },
+    tMap: { value: new THREE.TextureLoader().load('../assets/mountains-toko.jpg', () => mountainsLoaded(), undefined, () => mountainsLoaded()) },
     uFogColor: { value: new THREE.Vector3(...FOG) }, uVis: { value: 1 },
   },
   vertexShader: `varying vec2 vUv; varying float vY; void main() { vUv = uv; vY = position.y; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`,
@@ -869,6 +872,25 @@ const capMining = document.getElementById('capMining'), capMiningSub = document.
 const capRoad = document.getElementById('capRoad'), capRoadSub = document.getElementById('capRoadSub');
 const reliefWrap = document.getElementById('reliefWrap');
 const trainWrap = document.getElementById('trainWrap'), train = document.getElementById('train'), trainLoop = document.getElementById('trainLoop');
+// ── Загрузка (shared/preloader.js): экран загрузки ждёт только первый экран (шрифты, горы, первый кадр сцены);
+// видео и порт грузятся потом по очереди — в порядке сюжета. Не успели к своему блоку — прокрутка ждёт перед ним ──
+const PL = window.ElgaPreloader;
+PL.asset('relief', '../videos/elga-belaz-light-start-c.mp4', 9.4e5);   // -c — сжатые копии роликов
+PL.asset('reliefLoop', '../videos/elga-belaz-light-loop.mp4', 1.6e5);
+PL.asset('train', '../videos/elga-train-light-start-c.mp4', 6.9e5);
+PL.asset('trainLoop', '../videos/elga-train-light-loop-c.mp4', 6.7e5);
+PL.asset('port', '../assets/port-light-wide.jpg', 1.41e6);
+[[relief, 'relief'], [reliefLoop, 'reliefLoop'], [train, 'train'], [trainLoop, 'trainLoop']]
+  .forEach(([v, k]) => PL.when(k).then(u => { v.src = u; v.load(); }));
+// где по прокрутке нужен каждый файл — обновляется в afterLines (зависит от высоты экрана и текстов)
+const gates = [{ at: Infinity, keys: ['relief', 'reliefLoop'] }, { at: Infinity, keys: ['train', 'trainLoop'] }, { at: Infinity, keys: ['port'] }];
+let firstFrameDone; const firstFrame = new Promise(r => { firstFrameDone = r; });
+PL.critical([
+  { promise: document.fonts.load("400 64px 'Activist'"), weight: .5 },
+  { promise: document.fonts.load("400 18px 'Golos Text'"), weight: .5 },
+  { promise: mountainsReady, weight: 3 },
+  { promise: firstFrame, weight: 1 },
+]).then(() => PL.queue(['relief', 'reliefLoop', 'train', 'trainLoop', 'port']));
 const capPort = document.getElementById('capPort'), capPortSub = document.getElementById('capPortSub');
 const portBg = document.getElementById('portBg');
 let portZoom = .6;                                         // какая доля широкой картинки видна (камера взлетает — растёт до 1)
@@ -887,7 +909,7 @@ globeResize();
 // и мягкие блики. Суда, причал и берег — неподвижны. Маска строится из самой картинки при загрузке ──
 // широкая картинка: порт (тот же рендер) занимает её середину — 60 % по ширине и высоте, вокруг дорисован мир;
 // на экране порта видна только середина, при отлёте камера отдаляется до всей картинки — краёв не видно
-const PORT_SRC = '../assets/port-light-wide.jpg';
+// файл порта — assets/port-light-wide.jpg (его скачивает загрузчик, см. PL.asset('port'))
 const PORT_IN = .6;                                        // доля широкой картинки, которую занимает сам порт
 const portWater = (() => {
   const r = new THREE.WebGLRenderer({ antialias: false, alpha: false });
@@ -978,7 +1000,7 @@ const portWater = (() => {
     mat.uniforms.tMask.value = mt;
     ready = true;
   };
-  img.src = PORT_SRC;
+  PL.when('port').then(u => { img.src = u; });          // файл скачивает загрузчик
   // Маска воды. Вода — всё ниже кромки берега, кроме объектов в воде: крупные (эстакада, причал, суда) заданы
   // многоугольниками по картинке (доли ширины и высоты), стрелы кранов над судном — по резким краям, но только в их зоне
   // (на ближней воде рябь тоже даёт края — там их не ищем)
@@ -1118,6 +1140,7 @@ function afterLines(vh, sy, dt) {
   reliefWrap.style.opacity = 1 - sm(.45, 1, z);
   // «Железная дорога» — справа: выезжает, когда «Добыча» почти уехала
   const road = placeStack(capRoad, capRoadSub, vh, sy, mine.almostGone, 0);
+  gates[0].at = linesEnd(vh) - vh * .2; gates[1].at = mine.leave - vh * .2; gates[2].at = road.leave;
   // Порт: когда текст про дорогу начал уезжать, из белого проступает порт и чуть приближается к своему месту;
   // текст про порт выезжает слева, когда «Дорога» почти уехала
   // переход к порту: поезд продолжает чуть наезжать и растворяется, порт проступает поверх — долго и мягко
@@ -1272,6 +1295,8 @@ function frame(tms) {
   drawMaplines(linesAuto);
   movePerks(vh, sy);                                       // блок преимуществ приезжает со скроллом
   afterLines(vh, sy, dt);                                  // дальше — видео с рельефом и «Добыча»
+  PL.gate(sy, gates);                                      // файлы блока не готовы — ждём перед ним
+  firstFrameDone();                                        // первый кадр готов — экран загрузки можно убирать
 
   setLight(false);                       // фон везде светлый — шапка тёмная
   hint.style.opacity = 1 - sm(0, .03, p);
