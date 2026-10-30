@@ -16,34 +16,106 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   html, body { height: 100%; font-family: 'Golos Text', system-ui, sans-serif; }
   body { display: grid; grid-template-columns: 1fr 1fr; }
+  /* размеры надписей и отступы — переменные. Макет собран под ширину 1440; --u — «пиксель макета»:
+     на других экранах всё растёт и уменьшается пропорционально ширине (заодно крайняя ель фона
+     остаётся на линии текста — фон тоже масштабируется по ширине половинки) */
+  :root {
+    --u: calc(100vw / 1440);
+    --pad-left: calc(98 * var(--u)); --pad-bottom: calc(135 * var(--u));
+    --t-font: 'Activist', 'Golos Text', system-ui, sans-serif; --t-weight: 400;
+    --t-size: calc(98 * var(--u)); --t-lh: 1; --t-ls: -.025em; --t-case: none;
+  }
   a {
     position: relative; display: flex; flex-direction: column; justify-content: flex-end;
-    padding: 48px; text-decoration: none; transition: opacity .3s;
+    padding: calc(48 * var(--u)) calc(48 * var(--u)) var(--pad-bottom) var(--pad-left); text-decoration: none; transition: opacity .3s;
   }
-  a:hover { opacity: .85; }
-  .light { background: #dde3e8; color: #1d2a33; }
-  .dark { background: #0d1013; color: #f4f6f8; }
-  .label { font-size: 13px; letter-spacing: .3em; text-transform: uppercase; opacity: .6; margin-bottom: 16px; }
-  .title { font-family: 'Activist', 'Golos Text', system-ui, sans-serif; font-weight: 400; font-size: clamp(40px, 5vw, 80px); line-height: 1; letter-spacing: 0; }
-  .logo { position: absolute; top: 28px; left: 48px; font-size: 13px; font-weight: 500; letter-spacing: .3em; text-transform: uppercase; }
-  .proto { position: fixed; right: 24px; bottom: 16px; font-size: 12px; color: #8a949c; text-decoration: none; padding: 0; display: inline; }
+  /* размер крупных надписей — от него считаются оптические сдвиги и стрелка */
+  :root { --t-real: var(--t-size); }
+  /* фон половинок — ключевой кадр каждого концепта (без текста и интерфейса): светлый — ели над морем облаков
+     и горы (кадр отзеркален: крайняя ель — на линии текста), тёмный — разрез под звёздным небом.
+     Кадр — отдельный слой (::before), чтобы при наведении двигать только его; снизу (::after) — подложка под надписи */
+  .light { background: #dde3e8; color: #1d2a33; overflow: hidden; }
+  .dark { background: #0d1013; color: #f4f6f8; overflow: hidden; }
+  .light::before, .dark::before, .light::after, .dark::after { content: ''; position: absolute; inset: 0; pointer-events: none; }
+  .light::before { background: url('assets/choose-light.jpg') left center / cover no-repeat; transform-origin: 0 50%; }
+  .dark::before { background: url('assets/choose-dark.jpg') center / cover no-repeat; transform-origin: 50% 40%; }
+  .light::before, .dark::before, .stars { transition: transform 1.4s cubic-bezier(.25, .6, .3, 1), opacity 1s; }
+  .light::after { background: linear-gradient(to top, rgba(221, 227, 232, .6), rgba(221, 227, 232, 0) 42%); }
+  .dark::after { background: linear-gradient(to top, rgba(13, 16, 19, .7), rgba(13, 16, 19, 0) 45%); }
+  .label, .title, .logo { position: relative; z-index: 2; }
+  .logo { position: absolute; }
+  /* наведение, светлый: кадр медленно приближается и чуть уплывает вбок — будто облака дрейфуют */
+  .light:hover::before, .light:focus-visible::before { transform: scale(1.07) translateX(-.7%); }
+  /* наведение, тёмный: кадр медленно приближается, звёзды над разрезом начинают тихо мерцать */
+  .dark:hover::before, .dark:focus-visible::before { transform: scale(1.07); }
+  .stars { position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0; transform-origin: 50% 40%;
+    /* только небо над разрезом: по центру и сверху, к стенам и вниз гаснет */
+    -webkit-mask-image: radial-gradient(60% 75% at 50% 10%, #000 40%, transparent 100%);
+            mask-image: radial-gradient(60% 75% at 50% 10%, #000 40%, transparent 100%); }
+  .stars i { position: absolute; inset: 0; background-repeat: repeat; }
+  .stars i:nth-child(1) { background-image: radial-gradient(1.2px 1.2px at 23px 41px, #fff, transparent), radial-gradient(1px 1px at 91px 118px, #fff, transparent),
+      radial-gradient(1.4px 1.4px at 157px 63px, #fff, transparent); background-size: 190px 170px; animation: twinkle 3.1s ease-in-out infinite; }
+  .stars i:nth-child(2) { background-image: radial-gradient(1px 1px at 61px 22px, #fff, transparent), radial-gradient(1.3px 1.3px at 134px 97px, #fff, transparent),
+      radial-gradient(1px 1px at 12px 140px, #fff, transparent); background-size: 230px 210px; animation: twinkle 4.3s ease-in-out infinite 1.4s; }
+  .stars i:nth-child(3) { background-image: radial-gradient(1.6px 1.6px at 40px 80px, #dfe8ff, transparent), radial-gradient(1px 1px at 170px 30px, #fff, transparent);
+      background-size: 260px 240px; animation: twinkle 5.2s ease-in-out infinite .7s; }
+  @keyframes twinkle { 0%, 100% { opacity: .15; } 50% { opacity: .9; } }
+  .dark:hover .stars, .dark:focus-visible .stars { opacity: 1; transform: scale(1.07); }
+  @media (prefers-reduced-motion: reduce) {
+    .light::before, .dark::before, .stars { transition: none; }
+    .stars i { animation: none; }
+  }
+  .label { font-size: max(11px, calc(13 * var(--u))); letter-spacing: .3em; text-transform: uppercase; opacity: .6; margin-bottom: calc(16 * var(--u)); }
+  /* оптическая компенсация: надпись сверху выравнивается по видимому краю первой буквы крупного слова,
+     а не по рамке символа. У «С» отступ внутри символа больше и край круглый — сдвиг больше, у «Т» — меньше */
+  .light .label { margin-left: calc(var(--t-real) * .051); }
+  /* круглая «С» на глаз отступает от края сильнее прямой «Т» — «Светлый» чуть вынесен влево (оптический свес);
+     подписи «Концепт» начинаются с прямой «К» и стоят ровно по линии */
+  .light .title { margin-left: calc(var(--t-real) * -.015); }
+  .dark .label { margin-left: calc(var(--t-real) * .051); }
+  /* «Т» стоит в символе ближе к краю, чем «С», — «Тёмный» сдвинут вправо, чтобы видимые края слов в половинках совпадали */
+  .dark .title { margin-left: calc(var(--t-real) * .025); }
+  /* стрелка «вправо» после слова — как глиф того же шрифта: толщина штриха как у букв, прямые торцы;
+     при наведении прорисовывается — сначала линия, потом наконечник */
+  .title { display: inline-flex; align-items: baseline; white-space: nowrap; }
+  .arrow { width: calc(var(--t-real) * .92); height: calc(var(--t-real) * .735); margin-left: calc(var(--t-real) * .28); overflow: visible; }
+  .arrow path { fill: none; stroke: currentColor; stroke-width: 9.8; stroke-linecap: butt; stroke-linejoin: miter;
+                transition: stroke-dashoffset .35s cubic-bezier(.4, 0, .2, 1); }
+  /* штрих длиной с саму линию, сдвинутый на всю длину, — линии не видно; сдвиг к 0 — она прорисовывается */
+  .arrow .shaft { stroke-dasharray: 86 86; stroke-dashoffset: 86; }
+  .arrow .head { stroke-dasharray: 99 99; stroke-dashoffset: 99; transition-delay: 0s; }
+  a:hover .arrow .shaft, a:focus-visible .arrow .shaft { stroke-dashoffset: 0; }
+  a:hover .arrow .head, a:focus-visible .arrow .head { stroke-dashoffset: 0; transition-delay: .22s; }
+  .title { font-family: var(--t-font); font-weight: var(--t-weight); font-size: var(--t-real); line-height: var(--t-lh); letter-spacing: var(--t-ls); text-transform: var(--t-case); }
+  .logo { position: absolute; top: calc(42 * var(--u)); left: var(--pad-left); line-height: 0; }
+  .logo svg { height: max(18px, calc(22 * var(--u))); width: auto; display: block; }
+  /* подпись разработчика: мелко и серым, слева — по линии надписи «Концепт 1» */
+  .credits { position: fixed; left: calc(var(--pad-left) + var(--t-real) * .051); bottom: max(12px, calc(16 * var(--u))); font-size: max(11px, calc(12 * var(--u))); color: #8a949c; }
+  .credits a { display: inline; padding: 0; color: inherit; border-bottom: 1px solid rgba(138, 148, 156, .5); transition: color .25s, border-color .25s; }
+  .credits a:hover, .credits a:focus-visible { color: #ff2159; border-bottom-color: rgba(255, 33, 89, .5); }   /* фирменный розовый Атвинты */
   @media (max-width: 760px) {
+    /* телефон: половинки друг над другом, размеры в обычных пикселях, надписи — от ширины экрана */
+    :root { --u: 1px; --pad-left: max(16px, calc(100vw * 98 / 1440)); --t-size: 14vw; }   /* отступ слева — в той же пропорции, что на компьютере */
     body { grid-template-columns: 1fr; }
-    a { padding: 24px 16px; min-height: 50vh; }
-    .logo { left: 16px; top: 20px; }
+    a { padding: 24px var(--pad-left); min-height: 50vh; }
+    /* блоки друг над другом: названия выше, чтобы подпись «Разработка» внизу не прилипала к «Тёмный» */
+    .light, .dark { padding-bottom: 72px; }
+    .logo { left: var(--pad-left); top: 30px; }
+    .credits { left: calc(var(--pad-left) + var(--t-real) * .051); }
   }
 </style>
 </head>
 <body>
   <a class="light" href="light/">
-    <span class="logo">Эльга</span>
+    <span class="logo" aria-label="Эльга"><svg role="img" aria-label="Эльга" fill="currentColor" viewBox="0 0 341.91 109.96" xmlns="http://www.w3.org/2000/svg"><path d="m93.86 16.1c-10.38-10.38-24.19-16.1-38.88-16.1s-28.49 5.72-38.88 16.1c-10.38 10.39-16.1 24.2-16.1 38.88s5.72 28.49 16.1 38.88c10.39 10.39 24.19 16.1 38.88 16.1s28.49-5.72 38.88-16.1 16.1-24.19 16.1-38.88-5.72-28.49-16.1-38.88zm-75.33 68.19c0 1.2-1.52 1.72-2.26.77-6.68-8.56-10.31-19.04-10.31-30.08s3.62-21.51 10.31-30.08c.74-.95 2.26-.44 2.26.77zm66.53 9.4c-8.56 6.68-19.04 10.31-30.08 10.31s-21.51-3.62-30.08-10.31c-.95-.74-.44-2.26.77-2.26h58.62c1.2 0 1.72 1.52.77 2.26zm-60.62-8.16v-61.09h60.99v61.09zm59.85-67h-58.62c-1.2 0-1.72-1.52-.77-2.26 8.56-6.68 19.04-10.31 30.08-10.31s21.51 3.62 30.08 10.31c.95.74.44 2.26-.77 2.26zm9.4 66.52c-.74.95-2.26.44-2.26-.77v-58.61c0-1.2 1.52-1.72 2.26-.77 6.68 8.56 10.31 19.04 10.31 30.08s-3.62 21.51-10.31 30.08z"/><path d="m55.08 45.62c-5.33 0-9.65 4.32-9.65 9.65s4.32 9.65 9.65 9.65 9.65-4.32 9.65-9.65-4.32-9.65-9.65-9.65z"/><path d="m176.61 80.27v9.84h-39.46v-70.26h39.46v9.84h-28.93v19.09h21.25v9.84h-21.25v21.65z"/><path d="m231.31 80.27v9.84h-41.23v-70.26h10.53v60.41h30.7z"/><path d="m262.11 18.58c13.19 0 19.38 7.77 21.84 19.88h-10.53c-1.97-6.89-5.22-9.74-11.81-9.74-10.53 0-14.17 9.84-14.17 26.27s3.64 26.27 14.17 26.27c11.32 0 12.79-8.66 12.79-18.6v-.98h-15.94v-9.84h26.57v7.97c0 19.88-6.69 31.59-22.93 31.59-18.2 0-25.39-14.86-25.39-36.41s7.18-36.41 25.39-36.41z"/><path d="m327.44 69.25h-19.88l-3.84 20.86h-10.33l13.97-70.25h20.47l14.07 70.25h-10.53l-3.94-20.86zm-18.01-9.84h16.14l-5.31-28.73h-5.41l-5.41 28.73z"/></svg></span>
     <span class="label">Концепт 1</span>
-    <span class="title">Светлый</span>
+    <span class="title">Светлый<svg class="arrow" viewBox="0 0 92 73.5" aria-hidden="true"><path class="shaft" d="M0 36.75H86"/><path class="head" d="M51.25 2L86 36.75L51.25 71.5"/></svg></span>
   </a>
   <a class="dark" href="dark/">
+    <span class="stars" aria-hidden="true"><i></i><i></i><i></i></span>
     <span class="label">Концепт 2</span>
-    <span class="title">Тёмный</span>
+    <span class="title">Тёмный<svg class="arrow" viewBox="0 0 92 73.5" aria-hidden="true"><path class="shaft" d="M0 36.75H86"/><path class="head" d="M51.25 2L86 36.75L51.25 71.5"/></svg></span>
   </a>
-  <a class="proto" href="prototype/">Исходный прототип</a>
+  <div class="credits">Разработка&nbsp;— <a href="https://atwinta.ru" target="_blank" rel="noopener">Атвинта</a></div>
 </body>
 </html>

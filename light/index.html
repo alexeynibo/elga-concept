@@ -19,24 +19,56 @@
     /* поля: 180 px — контейнер контента на 120 px уже, чем в тёмном концепте;
        на экранах шире 1920 контент остаётся шириной 1560 px по центру */
     --side: max(180px, calc((100vw - 1560px) / 2));
+    /* линия, с которой начинаются тексты справа («Железная дорога») — 4/7 ширины контента, как в тёмном */
+    --right-col: calc(var(--side) + (100vw - 2 * var(--side)) * 4 / 7);
   }
   /* логотип и меню — как в тёмном концепте, только тёмные */
   .logo { display: block; line-height: 0; color: inherit; }
   .logo__svg { height: 22px; width: auto; display: block; }
+  /* «Добыча»: заголовок и шрифт выделенной строки — как в тёмном концепте */
+  :root { --accent-size: 31px; --accent-lh: 1.31; --accent-ls: .07em;
+          --accent-font: 'Activist', 'Golos Text', sans-serif; --accent-case: none; }
+  .t-accent { display: block; white-space: nowrap; font-family: var(--accent-font); font-size: var(--accent-size);
+              line-height: var(--accent-lh); letter-spacing: var(--accent-ls); text-transform: var(--accent-case); }
+  .caption--mining { max-width: 56%; color: var(--ink-dark); top: 0; }
+  .caption--mining .caption__sub, .caption--road .caption__sub { will-change: transform; }
+  .caption--road { left: var(--right-col); right: var(--side); max-width: none; color: var(--ink-dark); top: 0; }
+  /* Порт: белый глиняный рендер (assets/port-light-v2.jpg) на весь экран, проступает из белого; текст — слева, как в тёмном */
+  .port-bg { position: absolute; inset: 0; z-index: 3; background: #fff url('../assets/port-light-v2.jpg') center / cover no-repeat;
+             opacity: 0; pointer-events: none; will-change: transform, opacity; }
+  .port-bg canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .caption--port { max-width: 56%; color: var(--ink-dark); top: 0; }
+  /* Глобус (light/globe.js): свой холст поверх порта; на нём же — облачная пелена перехода */
+  .globe-layer { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+  .globe-layer canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .caption--world { left: var(--right-col); right: var(--side); max-width: none; color: var(--ink-dark); top: 0; }   /* справа: шар — в левом нижнем углу */
+  .caption--world .caption__title { white-space: nowrap; }
+  .caption--world .caption__sub { will-change: transform; }
+  .caption--port .caption__sub { will-change: transform; }
+  .caption--road .caption__title { white-space: nowrap; }   /* «железная дорога» одной строкой, как в тёмном (колонка здесь уже) */
   @media (min-width: 1800px) {
+    :root { --title-size: 65px; --accent-size: 40px; }
     .logo__svg { height: 29px; }
     .header { font-size: 17px; }
     .menu { gap: 42px; }
   }
 
   /* Пролог: облака, ели, нырок к разрезу */
-  .story { height: 800vh; position: relative; }
+  /* пролог (облака → линии) — около 480vh прокрутки, дальше ещё около 320vh: видео с рельефом и «Добыча» */
+  .story { height: 900vh; position: relative; }
   .stage { position: sticky; top: 0; height: 100vh; overflow: hidden; background: #dde3e8; }
   .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .caption--hero { color: var(--ink-dark); max-width: 56%; }
 
   /* Под облаками — ровная белая заливка: проступает, пока камера проходит сквозь облака */
   .whiteout { position: absolute; inset: 0; z-index: 3; background: #fff; opacity: 0; pointer-events: none; }
+  /* Видео: из линий вырастает 3D-рельеф. Всегда на весь экран (cover); линии подогнаны под тот же кадр 1920×1080 */
+  .relief-wrap { position: absolute; inset: 0; z-index: 3; pointer-events: none; transform-origin: 50% 55%; will-change: transform, opacity; }
+  .relief { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; }
+  /* Поезд (экран «Железная дорога»): лежит под рельефом — проступает, пока рельеф наезжает на камеру и гаснет */
+  .train-wrap { position: absolute; inset: 0; z-index: 3; pointer-events: none; opacity: 0; transform-origin: 30% 60%; will-change: transform, opacity; }
+  .train { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .train--loop { opacity: 0; }
   /* Изолинии рельефа (light/maplines.js) — прорисовываются по скроллу, когда облака ушли с экрана */
   .maplines { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 4; pointer-events: none; }
   .maplines path { fill: none; stroke: #ccd2d7; stroke-width: 1.5; stroke-linecap: round; vector-effect: non-scaling-stroke; }
@@ -47,16 +79,30 @@
     display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 56px 48px;
     color: var(--ink-dark); pointer-events: none;
   }
-  .perk { display: flex; align-items: center; gap: 24px; }
+  .perk { display: flex; align-items: center; gap: 24px; will-change: transform; }
   .perk__icon { flex: none; width: 56px; height: 56px; }
   .perk__icon path, .perk__icon circle, .perk__icon rect { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }   /* как штрих текста */
   .perk__text { font-size: 20px; line-height: 1.3; letter-spacing: .01em; max-width: 300px; }
+  /* Кнопка «наверх»: белый круг в правом нижнем углу, стрелка — контуром, как иконки преимуществ.
+     Появляется, когда прокрутили больше экрана */
+  .to-top { position: fixed; right: 40px; bottom: 40px; z-index: 20; width: 56px; height: 56px; border: 0; border-radius: 50%;
+            display: grid; place-items: center; padding: 0; background: #fff; color: var(--ink-dark); cursor: pointer;
+            box-shadow: 0 6px 24px rgba(29, 42, 51, .1); opacity: 0; visibility: hidden; transform: translateY(8px);
+            transition: opacity .3s, visibility .3s, transform .3s, box-shadow .3s; }
+  .to-top.is-on { opacity: 1; visibility: visible; transform: none; }
+  .to-top:hover, .to-top:focus-visible { box-shadow: 0 8px 30px rgba(29, 42, 51, .18); transform: translateY(-2px); }
+  .to-top svg { width: 26px; height: 26px; }
+  .to-top path { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
 
   @media (max-width: 760px) {
     .caption--hero { max-width: none; }
     .perks { left: 16px; right: 16px; width: auto; grid-template-columns: 1fr; gap: 28px; }
     .perk__icon { width: 44px; height: 44px; }
     .perk__text { font-size: 15px; }
+    .caption--road, .caption--world { left: 16px; }
+    .caption--world .caption__title { white-space: normal; }
+    .caption--road .caption__title { white-space: normal; }
+    .to-top { right: 16px; bottom: 16px; width: 48px; height: 48px; }
   }
 </style>
 <script type="importmap">
@@ -66,7 +112,7 @@
 <body>
 
 <header class="header" id="header">
-  <a class="logo" href="#" aria-label="Эльга"><svg class="logo__svg" role="img" aria-label="Эльга" fill="currentColor" viewBox="0 0 341.91 109.96" xmlns="http://www.w3.org/2000/svg"><path d="m93.86 16.1c-10.38-10.38-24.19-16.1-38.88-16.1s-28.49 5.72-38.88 16.1c-10.38 10.39-16.1 24.2-16.1 38.88s5.72 28.49 16.1 38.88c10.39 10.39 24.19 16.1 38.88 16.1s28.49-5.72 38.88-16.1 16.1-24.19 16.1-38.88-5.72-28.49-16.1-38.88zm-75.33 68.19c0 1.2-1.52 1.72-2.26.77-6.68-8.56-10.31-19.04-10.31-30.08s3.62-21.51 10.31-30.08c.74-.95 2.26-.44 2.26.77zm66.53 9.4c-8.56 6.68-19.04 10.31-30.08 10.31s-21.51-3.62-30.08-10.31c-.95-.74-.44-2.26.77-2.26h58.62c1.2 0 1.72 1.52.77 2.26zm-60.62-8.16v-61.09h60.99v61.09zm59.85-67h-58.62c-1.2 0-1.72-1.52-.77-2.26 8.56-6.68 19.04-10.31 30.08-10.31s21.51 3.62 30.08 10.31c.95.74.44 2.26-.77 2.26zm9.4 66.52c-.74.95-2.26.44-2.26-.77v-58.61c0-1.2 1.52-1.72 2.26-.77 6.68 8.56 10.31 19.04 10.31 30.08s-3.62 21.51-10.31 30.08z"/><path d="m55.08 45.62c-5.33 0-9.65 4.32-9.65 9.65s4.32 9.65 9.65 9.65 9.65-4.32 9.65-9.65-4.32-9.65-9.65-9.65z"/><path d="m176.61 80.27v9.84h-39.46v-70.26h39.46v9.84h-28.93v19.09h21.25v9.84h-21.25v21.65z"/><path d="m231.31 80.27v9.84h-41.23v-70.26h10.53v60.41h30.7z"/><path d="m262.11 18.58c13.19 0 19.38 7.77 21.84 19.88h-10.53c-1.97-6.89-5.22-9.74-11.81-9.74-10.53 0-14.17 9.84-14.17 26.27s3.64 26.27 14.17 26.27c11.32 0 12.79-8.66 12.79-18.6v-.98h-15.94v-9.84h26.57v7.97c0 19.88-6.69 31.59-22.93 31.59-18.2 0-25.39-14.86-25.39-36.41s7.18-36.41 25.39-36.41z"/><path d="m327.44 69.25h-19.88l-3.84 20.86h-10.33l13.97-70.25h20.47l14.07 70.25h-10.53l-3.94-20.86zm-18.01-9.84h16.14l-5.31-28.73h-5.41l-5.41 28.73z"/></svg></a>
+  <a class="logo" href="../" aria-label="Эльга — к выбору концепта"><svg class="logo__svg" role="img" aria-label="Эльга" fill="currentColor" viewBox="0 0 341.91 109.96" xmlns="http://www.w3.org/2000/svg"><path d="m93.86 16.1c-10.38-10.38-24.19-16.1-38.88-16.1s-28.49 5.72-38.88 16.1c-10.38 10.39-16.1 24.2-16.1 38.88s5.72 28.49 16.1 38.88c10.39 10.39 24.19 16.1 38.88 16.1s28.49-5.72 38.88-16.1 16.1-24.19 16.1-38.88-5.72-28.49-16.1-38.88zm-75.33 68.19c0 1.2-1.52 1.72-2.26.77-6.68-8.56-10.31-19.04-10.31-30.08s3.62-21.51 10.31-30.08c.74-.95 2.26-.44 2.26.77zm66.53 9.4c-8.56 6.68-19.04 10.31-30.08 10.31s-21.51-3.62-30.08-10.31c-.95-.74-.44-2.26.77-2.26h58.62c1.2 0 1.72 1.52.77 2.26zm-60.62-8.16v-61.09h60.99v61.09zm59.85-67h-58.62c-1.2 0-1.72-1.52-.77-2.26 8.56-6.68 19.04-10.31 30.08-10.31s21.51 3.62 30.08 10.31c.95.74.44 2.26-.77 2.26zm9.4 66.52c-.74.95-2.26.44-2.26-.77v-58.61c0-1.2 1.52-1.72 2.26-.77 6.68 8.56 10.31 19.04 10.31 30.08s-3.62 21.51-10.31 30.08z"/><path d="m55.08 45.62c-5.33 0-9.65 4.32-9.65 9.65s4.32 9.65 9.65 9.65 9.65-4.32 9.65-9.65-4.32-9.65-9.65-9.65z"/><path d="m176.61 80.27v9.84h-39.46v-70.26h39.46v9.84h-28.93v19.09h21.25v9.84h-21.25v21.65z"/><path d="m231.31 80.27v9.84h-41.23v-70.26h10.53v60.41h30.7z"/><path d="m262.11 18.58c13.19 0 19.38 7.77 21.84 19.88h-10.53c-1.97-6.89-5.22-9.74-11.81-9.74-10.53 0-14.17 9.84-14.17 26.27s3.64 26.27 14.17 26.27c11.32 0 12.79-8.66 12.79-18.6v-.98h-15.94v-9.84h26.57v7.97c0 19.88-6.69 31.59-22.93 31.59-18.2 0-25.39-14.86-25.39-36.41s7.18-36.41 25.39-36.41z"/><path d="m327.44 69.25h-19.88l-3.84 20.86h-10.33l13.97-70.25h20.47l14.07 70.25h-10.53l-3.94-20.86zm-18.01-9.84h16.14l-5.31-28.73h-5.41l-5.41 28.73z"/></svg></a>
   <nav class="menu" data-c="nav"></nav>
 </header>
 
@@ -84,6 +130,17 @@
     </div>
 
     <div class="whiteout" id="whiteout"></div>
+    <!-- поезд: start играет один раз, когда «Добыча» начинает уезжать; доиграл — поверх по кругу идёт петля
+         (её первый кадр = последний кадр start) -->
+    <div class="train-wrap" id="trainWrap">
+      <video class="train" id="train" src="../videos/elga-train-light-start.mp4" muted playsinline preload="auto"></video>
+      <video class="train train--loop" id="trainLoop" src="../videos/elga-train-light-loop.mp4" muted playsinline loop preload="auto"></video>
+    </div>
+    <div class="relief-wrap" id="reliefWrap">
+      <video class="relief" id="relief" src="../videos/elga-belaz-light-start.mp4" muted playsinline preload="auto"></video>
+      <!-- когда ролик с рельефом доиграл — поверх него по кругу идёт петля (её первый кадр = последний кадр рельефа) -->
+      <video class="relief" id="reliefLoop" src="../videos/elga-belaz-light-loop.mp4" muted playsinline loop preload="auto"></video>
+    </div>
     <svg class="maplines" id="maplines" viewBox="0 0 1920 1080" preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg>
     <!-- Преимущества: тексты — intro.facts (те же, что в тёмном концепте), иконки — свои, контурные -->
     <div class="perks" id="perks">
@@ -108,12 +165,48 @@
         <p class="perk__text" data-c="intro.facts.3.text"></p>
       </div>
     </div>
+    <!-- Добыча: приезжает со скроллом, пока идёт видео с рельефом. Тексты — как в тёмном концепте -->
+    <div class="caption caption--mining" id="capMining">
+      <h2 class="caption__title" data-c="mining.title"></h2>
+      <p class="caption__sub" id="capMiningSub" data-c="mining.subtitle"></p>
+    </div>
+    <div class="port-bg" id="portBg"></div>
+    <!-- Железная дорога: справа, приезжает, когда «Добыча» уезжает, а рельеф наезжает на камеру. Тексты — как в тёмном -->
+    <div class="caption caption--road" id="capRoad">
+      <h2 class="caption__title" data-c="road.title"></h2>
+      <p class="caption__sub" id="capRoadSub" data-c="road.subtitle"></p>
+    </div>
+    <div class="globe-layer" id="globeLayer"></div>
+    <!-- Порт: слева, приезжает, когда текст про дорогу почти уехал. Тексты — как в тёмном концепте -->
+    <div class="caption caption--port" id="capPort">
+      <h2 class="caption__title" data-c="port.title"></h2>
+      <p class="caption__sub" id="capPortSub" data-c="port.subtitle"></p>
+    </div>
+    <!-- Мир: справа, приезжает, когда облака перехода расходятся и проступает шар. Тексты — как в тёмном концепте -->
+    <div class="caption caption--world" id="capWorld">
+      <h2 class="caption__title" data-c="world.title"></h2>
+      <p class="caption__sub" id="capWorldSub" data-c="world.subtitle"></p>
+    </div>
   </div>
 </section>
+<button class="to-top" id="toTop" type="button" aria-label="Наверх">
+  <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 39V9"/><path d="M12 21L24 9L36 21"/></svg>
+</button>
+<script>
+  // кнопка «наверх»: видна, когда прокрутили больше экрана; по нажатию — плавно в начало страницы
+  (() => {
+    const btn = document.getElementById('toTop');
+    const upd = () => btn.classList.toggle('is-on', window.scrollY > window.innerHeight);
+    window.addEventListener('scroll', upd, { passive: true });
+    upd();
+    btn.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+  })();
+</script>
 
 
 <script src="../content/content.js"></script>
 <script src="maplines.js"></script>
+<script src="globe.js"></script>
 <script src="../shared/elga.js"></script>
 <script type="module">
 import * as THREE from 'three';
@@ -700,8 +793,13 @@ resize();
 // ── Прокрутка и мышь ──
 const story = document.getElementById('story');
 let target = 0, prog = 0;
+// пролог (облака → линии) — первые 700vh прокрутки; дальше — видео с рельефом (см. «После линий»)
+const PROLOGUE_VH = 7;
+// экран линий кончается сразу, как прорисовалась основная часть линий и встали преимущества — дальше без паузы видео
+const LINES_END = .68;                                      // доля пролога
+const linesEnd = vh => LINES_END * PROLOGUE_VH * vh;
 function readScroll() {
-  const max = story.offsetHeight - window.innerHeight;
+  const max = PROLOGUE_VH * window.innerHeight;
   target = Math.min(1, Math.max(0, window.scrollY / max));
 }
 window.addEventListener('scroll', readScroll, { passive: true });
@@ -731,14 +829,16 @@ function endHeight() {
   return Math.min(.92 * MINE_H / t, .92 * MINE_W / (t * camera.aspect));
 }
 const sm = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-const ease = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
 const camPos = new THREE.Vector3(), camLook = new THREE.Vector3();
+const DIVE_FROM = .22;                                      // нырок стартует, пока отъезд ещё идёт (отъезд кончается на .3)
 function placeCamera(p, time) {
   KEYS[4].pos.y = GROUND_Y + endHeight();
   camPos.copy(KEYS[0].pos); camLook.copy(KEYS[0].look);
   for (let i = 1; i < KEYS.length; i++) {
-    // отъезд — плавный старт и остановка; дальше нырок одним непрерывным движением
-    const k = i === 1 ? ease(sm(KEYS[0].at, KEYS[1].at, p)) : sm(KEYS[i - 1].at, KEYS[i].at, p);
+    // отъезд — плавный старт; нырок начинается ещё до конца отъезда (внахлёст), поэтому между ними нет паузы:
+    // камера, договаривая отъезд, уже опускается к облакам — одно непрерывное движение
+    const a = i === 2 ? DIVE_FROM : KEYS[i - 1].at;
+    const k = i === 1 ? sm(KEYS[0].at, KEYS[1].at, p) : sm(a, KEYS[i].at, p);
     camPos.lerp(KEYS[i].pos, k);
     camLook.lerp(KEYS[i].look, k);
   }
@@ -757,13 +857,333 @@ function placeCamera(p, time) {
 
 const capHero = document.getElementById('capHero');
 const whiteout = document.getElementById('whiteout');
-// преимущества: блок едет вверх вместе со скроллом (один к одному) и встаёт по центру экрана по высоте
+// преимущества: блок едет вверх вместе со скроллом (один к одному) и встаёт на 50 px выше центра экрана по высоте
 const perksBox = document.getElementById('perks');
-const PERKS_STOP = .72;                                    // доля пролога, на которой блок встал на место
+const PERKS_STOP = .64;                                    // доля пролога, на которой блок встал на место
+// ── После линий: видео, в котором из линий вырастает 3D-рельеф, идёт по скроллу; линии плавно гаснут,
+// рельеф проступает на их месте (кадр видео и линии — один и тот же 1920×1080, оба на весь экран); «Добыча» приезжает ──
+const relief = document.getElementById('relief'), reliefLoop = document.getElementById('reliefLoop');
+const RELIEF_CLIP = [0, 7.15];                             // весь ролик (7,2 с)
+const VIDEO_VH = 3.2;                                      // сколько экранов прокрутки идёт ролик
+const capMining = document.getElementById('capMining'), capMiningSub = document.getElementById('capMiningSub');
+const capRoad = document.getElementById('capRoad'), capRoadSub = document.getElementById('capRoadSub');
+const reliefWrap = document.getElementById('reliefWrap');
+const trainWrap = document.getElementById('trainWrap'), train = document.getElementById('train'), trainLoop = document.getElementById('trainLoop');
+const capPort = document.getElementById('capPort'), capPortSub = document.getElementById('capPortSub');
+const portBg = document.getElementById('portBg');
+let portZoom = .6;                                         // какая доля широкой картинки видна (камера взлетает — растёт до 1)
+const capWorld = document.getElementById('capWorld'), capWorldSub = document.getElementById('capWorldSub');
+// ── Глобус (light/globe.js — светлая копия шара из тёмного концепта): своё полотно поверх порта.
+// После порта камера отлетает: порт отдаляется, экран затягивает белыми облаками, сквозь них проступает шар ──
+const globeLayer = document.getElementById('globeLayer');
+const globeR = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+globeR.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+globeLayer.appendChild(globeR.domElement);
+const globe = ElgaGlobe.create(THREE, globeR, noiseTex);
+function globeResize() { const w = globeLayer.clientWidth, h = globeLayer.clientHeight; globeR.setSize(w, h, false); globe.resize(w, h); }
+window.addEventListener('resize', globeResize);
+globeResize();
+// ── Вода в порту: картинка выводится через WebGL, по маске воды идёт медленная рябь (вода чуть «плывёт»)
+// и мягкие блики. Суда, причал и берег — неподвижны. Маска строится из самой картинки при загрузке ──
+// широкая картинка: порт (тот же рендер) занимает её середину — 60 % по ширине и высоте, вокруг дорисован мир;
+// на экране порта видна только середина, при отлёте камера отдаляется до всей картинки — краёв не видно
+const PORT_SRC = '../assets/port-light-wide.jpg';
+const PORT_IN = .6;                                        // доля широкой картинки, которую занимает сам порт
+const portWater = (() => {
+  const r = new THREE.WebGLRenderer({ antialias: false, alpha: false });
+  r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+  portBg.appendChild(r.domElement);
+  const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { tImg: { value: null }, tMask: { value: null }, tNoise: { value: noiseTex }, uTime: { value: 0 },
+                uScale: { value: new THREE.Vector2(1, 1) }, uAspect: { value: 16 / 9 }, uZoom: { value: 1 },
+                uDrops: { value: Array.from({ length: 10 }, () => new THREE.Vector3(0, 0, -99)) },   // круги от курсора: x, y, время
+                uDebug: { value: /[?&]watermask/.test(location.search) ? 1 : 0 } },   // ?watermask — подсветить маску воды
+    vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }`,
+    fragmentShader: `
+      uniform sampler2D tImg, tMask, tNoise;
+      uniform float uTime, uDebug, uAspect, uZoom;
+      uniform vec2 uScale;
+      uniform vec3 uDrops[10];
+      varying vec2 vUv;
+      void main() {
+        vec2 uv = (vUv - .5) * uScale * uZoom + .5;                 // картинка «cover», как фон; uZoom > 1 — камера отдаляется
+        float m = texture2D(tMask, uv).r;                            // 1 — вода, 0 — всё остальное
+        float t = uTime;
+        // рябь: два слоя шума, вытянутых поперёк кадра (волны идут к берегу), плывут в разные стороны
+        vec2 q = uv / ${PORT_IN.toFixed(2)} * vec2(3.2, 7.);   // рябь — в масштабе самого порта
+        float n1 = texture2D(tNoise, q * .35 + vec2(t * .016, t * .025)).r;
+        float n2 = texture2D(tNoise, q * .6 - vec2(t * .022, -t * .014)).g;
+        vec2 off = (vec2(n1, n2) - .5) * vec2(.005, .0075) * ${PORT_IN.toFixed(2)} * m;
+        // круги от курсора: расходятся от точки и затухают; по кругу картинка чуть смещается и светлеет
+        float ring = 0.;
+        for (int i = 0; i < 10; i++) {
+          vec3 dr = uDrops[i];
+          float age = t - dr.z;
+          if (age < 0. || age > 2.6) continue;
+          // вода — плоскость под камерой в перспективе: круги на ней — сплюснутые по вертикали эллипсы,
+          // и чем дальше от камеры (выше в кадре), тем они мельче и медленнее
+          float persp = mix(1.05, .45, (dr.y - ${((1 - PORT_IN) / 2).toFixed(2)}) / ${PORT_IN.toFixed(2)});
+          vec2 dv = (uv - dr.xy) / ${PORT_IN.toFixed(2)} * vec2(uAspect, 2.6) / persp;
+          float d = length(dv), r = age * .12;                       // круги вдвое крупнее: и радиус, и длина волны
+          float env = exp(-pow((d - r) * 8., 2.)) * exp(-age * 1.1) * smoothstep(0., .03, d) * smoothstep(.6, 0., d);
+          float ph = (d - r) * 47.5;
+          float w = sin(ph) * env;
+          // волна преломляет картинку под собой и по-разному освещена склонами: обращённые к свету — светлее
+          off += normalize(dv + 1e-5) * w * .0028 * ${PORT_IN.toFixed(2)} * persp * m;
+          ring += cos(ph) * env * (dv.y / (d + 1e-4));
+        }
+        vec3 col = texture2D(tImg, uv + off).rgb;
+        // цвет — как у роликов с поездом и рельефом: чисто серый, без сиреневого оттенка, и светлее, контрастнее
+        // (середина яркости 199 → ~246, тени 143 → ~158); светлое мягко уходит в белый, детали в нём не обрываются;
+        // тени мягкие: тёмное плавно упирается в «пол» ~0,55 (≈140 из 255), как в роликах
+        float L = dot(col, vec3(.2126, .7152, .0722));
+        float g = 1.57 * L - .26;
+        g = g < .9 ? g : .9 + .1 * (1. - exp(-(g - .9) / .1));
+        g = g > .72 ? g : .72 - .17 * (1. - exp(-(.72 - g) / .17));
+        col = vec3(clamp(g, 0., 1.));
+        // блики: светлые пятна там, где гребни шума совпали, — медленно проходят по воде
+        float w = n1 * .6 + n2 * .6;
+        float glint = smoothstep(.74, 1., w) * m;
+        float shade = (w - .6) * .09 * m;                            // светлые и тёмные полосы ряби
+        col += glint * .16 + shade + ring * .06 * m;
+        // небольшие облака над портом: плывут по ветру, под каждым на порт падает мягкая тень (чуть смещена вниз-вправо);
+        // над текстом слева облаков нет — он остаётся читаемым
+        vec2 cp = vUv * vec2(uAspect, 1.) * 1.6 + vec2(-t * .022, t * .006);
+        float cn = texture2D(tNoise, cp * .5).r * .6 + texture2D(tNoise, cp * 1.15 + 3.7).g * .3 + texture2D(tNoise, cp * 2.6 + 7.1).b * .15;
+        float sn = texture2D(tNoise, (cp - vec2(.05, -.07)) * .5).r * .6 + texture2D(tNoise, (cp - vec2(.05, -.07)) * 1.15 + 3.7).g * .3
+                 + texture2D(tNoise, (cp - vec2(.05, -.07)) * 2.6 + 7.1).b * .15;
+        float avoid = 1. - smoothstep(.62, .45, vUv.x) * smoothstep(.2, .32, vUv.y) * smoothstep(.82, .7, vUv.y);
+        float cloud = smoothstep(.6, .78, cn) * avoid;
+        float shadow = smoothstep(.6, .78, sn) * avoid;
+        col *= 1. - shadow * .1;
+        col = mix(col, vec3(1.), cloud * .92);
+        col = mix(col, vec3(1., .15, .1), m * .45 * uDebug);
+        gl_FragColor = vec4(col, 1.);
+      }`,
+    depthTest: false, depthWrite: false,
+  });
+  const scene2 = new THREE.Scene();
+  scene2.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat));
+  let imgAspect = 16 / 9, ready = false, dropI = 0;
+  const lastDrop = { x: -1, y: -1, t: 0 };
+  const img = new Image();
+  img.onload = () => {
+    imgAspect = img.width / img.height;
+    const tex = new THREE.Texture(img); tex.needsUpdate = true; tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
+    mat.uniforms.tImg.value = tex;
+    const mc = buildWaterMask(img);
+    if (mat.uniforms.uDebug.value) window.__waterMask = mc;
+    const mt = new THREE.CanvasTexture(mc); mt.minFilter = mt.magFilter = THREE.LinearFilter; mt.generateMipmaps = false;
+    mat.uniforms.tMask.value = mt;
+    ready = true;
+  };
+  img.src = PORT_SRC;
+  // Маска воды. Вода — всё ниже кромки берега, кроме объектов в воде: крупные (эстакада, причал, суда) заданы
+  // многоугольниками по картинке (доли ширины и высоты), стрелы кранов над судном — по резким краям, но только в их зоне
+  // (на ближней воде рябь тоже даёт края — там их не ищем)
+  function buildWaterMask(src) {
+    const W = 1600, H = Math.round(W / imgAspect);
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const g = c.getContext('2d');
+    g.drawImage(src, 0, 0, W, H);
+    const d = g.getImageData(0, 0, W, H).data;
+    const L = new Float32Array(W * H);
+    for (let i = 0; i < W * H; i++) L[i] = (d[i * 4] * .299 + d[i * 4 + 1] * .587 + d[i * 4 + 2] * .114) / 255;
+    // резкие края (градиент яркости) с запасом в несколько пикселей
+    const edge = new Uint8Array(W * H);
+    for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+      const i = y * W + x;
+      const gx = L[i + 1] - L[i - 1], gy = L[i + W] - L[i - W];
+      if (Math.hypot(gx, gy) > .1) edge[i] = 1;
+    }
+    const grow = (a, rad) => { const o = new Uint8Array(W * H);
+      for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { if (!a[y * W + x]) continue;
+        for (let dy = -rad; dy <= rad; dy++) for (let dx = -rad; dx <= rad; dx++) { const X = x + dx, Y = y + dy;
+          if (X >= 0 && Y >= 0 && X < W && Y < H) o[Y * W + X] = 1; } }
+      return o; };
+    const edges = grow(edge, 2);
+    // многоугольники объектов
+    const m = document.createElement('canvas'); m.width = W; m.height = H;
+    const mg = m.getContext('2d');
+    mg.fillStyle = '#000'; mg.fillRect(0, 0, W, H);
+    // координаты ниже — доли исходного кадра порта; в широкой картинке он стоит в середине (PORT_IN)
+    const T = ([x, y]) => [((1 - PORT_IN) / 2 + PORT_IN * x) * W, ((1 - PORT_IN) / 2 + PORT_IN * y) * H];
+    const poly = pts => { mg.beginPath(); pts.forEach((pt, k) => { const [x, y] = T(pt); k ? mg.lineTo(x, y) : mg.moveTo(x, y); }); mg.closePath(); mg.fill(); };
+    mg.fillStyle = '#fff';
+    poly([[0, .415], [1, .265], [1, 1], [0, 1]]);                                       // ниже кромки берега
+    mg.fillStyle = '#000';
+    poly([[.365, .33], [.395, .33], [.6, .72], [.565, .74]]);                         // эстакада
+    poly([[0, .86], [.5, .715], [.985, .535], [.99, .615], [.5, .835], [0, 1]]);       // причал
+    poly([[0, .77], [.44, .655], [.47, .73], [.5, .84], [.44, 1], [0, 1]]);            // суда слева внизу
+    poly([[.535, .815], [.815, .62], [.885, .66], [.875, .735], [.56, .875]]);         // судно у причала справа
+    const pm = mg.getImageData(0, 0, W, H).data;
+    const zone = (x, y) => { const u = (x / W - (1 - PORT_IN) / 2) / PORT_IN, v = (y / H - (1 - PORT_IN) / 2) / PORT_IN;
+      return u > .58 && u < .86 && v > .44 && v < .76; };   // краны
+    // вода = белое в маске многоугольников и без резких краёв; края маски мягкие
+    let a = new Float32Array(W * H);
+    for (let i = 0; i < W * H; i++) a[i] = pm[i * 4] > 127 && !(edges[i] && zone(i % W, (i / W) | 0)) ? 1 : 0;
+    // размытие окном (2·rad+1): скользящая сумма по строкам, потом по столбцам; за краями — крайние пиксели
+    const blur = (src, rad) => { const t = new Float32Array(W * H), o = new Float32Array(W * H), n = 2 * rad + 1;
+      const cx = v => Math.min(W - 1, Math.max(0, v)), cy = v => Math.min(H - 1, Math.max(0, v));
+      for (let y = 0; y < H; y++) { let s = 0;
+        for (let k = -rad; k <= rad; k++) s += src[y * W + cx(k)];
+        for (let x = 0; x < W; x++) { t[y * W + x] = s / n; s += src[y * W + cx(x + rad + 1)] - src[y * W + cx(x - rad)]; } }
+      for (let x = 0; x < W; x++) { let s = 0;
+        for (let k = -rad; k <= rad; k++) s += t[cy(k) * W + x];
+        for (let y = 0; y < H; y++) { o[y * W + x] = s / n; s += t[cy(y + rad + 1) * W + x] - t[cy(y - rad) * W + x]; } }
+      return o; };
+    a = blur(blur(a, 2), 2);
+    const out = mg.createImageData(W, H);
+    const lo = (1 - PORT_IN) / 2, hi = 1 - lo, sm1 = (a0, b0, x) => { const t = Math.min(1, Math.max(0, (x - a0) / (b0 - a0))); return t * t * (3 - 2 * t); };
+    for (let i = 0; i < W * H; i++) { const u = (i % W) / W, vv = ((i / W) | 0) / H;
+      const box = sm1(lo, lo + .04, u) * sm1(hi, hi - .04, u) * sm1(lo, lo + .04, vv) * sm1(hi, hi - .04, vv);   // у края порта рябь мягко стихает
+      const v = Math.round(Math.min(1, Math.max(0, (a[i] - .35) / .5)) * box * 255);
+      out.data[i * 4] = out.data[i * 4 + 1] = out.data[i * 4 + 2] = v; out.data[i * 4 + 3] = 255; }
+    mg.putImageData(out, 0, 0);
+    return m;
+  }
+  function resize() {
+    const w = portBg.clientWidth, h = portBg.clientHeight;
+    r.setSize(w, h, false);
+    const sa = w / h;
+    mat.uniforms.uScale.value.set(sa > imgAspect ? 1 : sa / imgAspect, sa > imgAspect ? imgAspect / sa : 1);
+    mat.uniforms.uAspect.value = imgAspect;
+  }
+  window.addEventListener('resize', resize);
+  return {
+    render(time, zoom = PORT_IN) {
+      if (!ready) return;
+      mat.uniforms.uZoom.value = zoom;
+      if (r.domElement.width !== Math.round(portBg.clientWidth * r.getPixelRatio())) resize();
+      mat.uniforms.uTime.value = time;
+      // курсор над водой оставляет круги: новая капля, когда курсор сдвинулся достаточно (или раз в 0,15 с, пока движется)
+      const sc = mat.uniforms.uScale.value, u = (mx - .5) * sc.x * zoom + .5, v = (my - .5) * sc.y * zoom + .5;
+      if (moved && (Math.hypot(u - lastDrop.x, v - lastDrop.y) > .025 || (time - lastDrop.t > .12 && Math.hypot(u - lastDrop.x, v - lastDrop.y) > .005))) {
+        mat.uniforms.uDrops.value[dropI].set(u, v, time); dropI = (dropI + 1) % 10;
+        lastDrop.x = u; lastDrop.y = v; lastDrop.t = time;
+      }
+      r.render(scene2, cam);
+    },
+  };
+})();
+// Текст, как в тёмном концепте: заголовок выезжает снизу со скроллом и ждёт, описание подъезжает и встаёт под него,
+// описание встало — сразу уходят вверх вместе (без паузы; hold — если пауза нужна). from — с какой прокрутки начинает въезжать; dy — сдвиг от центра по высоте
+function placeStack(el, sub, vh, sy, from, dy, hold = 0) {   // hold — сколько прокрутки текст стоит на месте (по умолчанию не стоит)
+  const h = el.offsetHeight, subOff = sub.offsetTop;
+  const titleY = (vh - h) / 2 + dy, subY = titleY + subOff;
+  // описание выезжает чуть раньше, чем заголовок встал (на 0,2 экрана), но не ближе к нему, чем в итоговой вёрстке
+  const lead = Math.max(0, Math.min(vh * .2, vh - subY));
+  const titleIn = from + (vh - titleY), subFrom = titleIn - lead, subIn = subFrom + (vh - subY), leave = subIn + hold;
+  const away = Math.max(0, sy - leave);
+  const tY = Math.min(vh * 1.1, sy < titleIn ? vh - (sy - from) : titleY - away);
+  const sY = sy < subFrom ? vh * 1.1 : (sy < subIn ? vh - (sy - subFrom) : subY - away);
+  el.style.transform = `translateY(${tY}px)`;
+  sub.style.transform = `translateY(${sY - tY - subOff}px)`;
+  return { titleIn, subIn, leave, almostGone: leave + titleY + h - vh * .15 };
+}
+// поезд: заголовок про дорогу почти встал — start играет сам с обычной скоростью, доиграл — по кругу идёт петля.
+// Вернулись назад — оба ролика стоят на первом кадре и ждут; когда порт закрыл поезд — ролики на паузе
+let trainDone = false;                                     // start доиграл — дальше только петля
+train.addEventListener('ended', () => { trainDone = true; });
+function trainShow(visible, started) {
+  if (!started) {
+    trainDone = false;
+    if (!train.paused) train.pause();
+    if (!trainLoop.paused) trainLoop.pause();
+    if (train.currentTime > 0) train.currentTime = 0;
+    if (trainLoop.currentTime > 0) trainLoop.currentTime = 0;
+    trainLoop.style.opacity = 0;
+    return;
+  }
+  if (!trainDone && train.duration > 0 && train.currentTime >= train.duration - .05) trainDone = true;
+  if (trainDone) {
+    trainLoop.style.opacity = 1;
+    if (visible && trainLoop.paused) trainLoop.play().catch(() => {});
+    if (!visible && !trainLoop.paused) trainLoop.pause();
+  } else if (visible && train.paused) train.play().catch(() => {});
+  else if (!visible && !train.paused) train.pause();
+}
+let reliefT = 0;                                           // сглаженное время ролика: кадры сменяются плавно, без рывков скролла
+function afterLines(vh, sy, dt) {
+  const s2 = sy - linesEnd(vh);                             // прокрутка после экрана линий
+  relief.style.opacity = s2 > 0 ? 1 : 0;
+  // «Добыча» как в тёмном концепте: заголовок выезжает снизу и встаёт (на 70 px выше центра), потом подъезжает описание;
+  // и сразу уезжают вверх вместе со скроллом
+  const mine = placeStack(capMining, capMiningSub, vh, sy, linesEnd(vh) + vh * .6, -70);
+  const titleIn = mine.titleIn;
+  // дальше рельеф наезжает на камеру — растёт, будто приближается, и пропадает за ней
+  const z = sm(mine.leave, mine.leave + vh * 1.1, sy);
+  reliefWrap.style.transform = z > 0 ? `scale(${1 + 2.4 * z * z})` : '';
+  reliefWrap.style.opacity = 1 - sm(.45, 1, z);
+  // «Железная дорога» — справа: выезжает, когда «Добыча» почти уехала
+  const road = placeStack(capRoad, capRoadSub, vh, sy, mine.almostGone, 0);
+  // Порт: когда текст про дорогу начал уезжать, из белого проступает порт и чуть приближается к своему месту;
+  // текст про порт выезжает слева, когда «Дорога» почти уехала
+  // переход к порту: поезд продолжает чуть наезжать и растворяется, порт проступает поверх — долго и мягко
+  const pf = sm(road.leave + vh * .2, road.leave + vh * 1.1, sy);   // пока текст про дорогу уезжает вверх
+  portBg.style.opacity = pf;
+  // поезд стоит на первом (почти белом) кадре и трогается, когда заголовок про дорогу подъехал чуть ниже центра
+  const trainGo = road.titleIn - vh * .1;
+  trainShow(sy >= trainGo && pf < 1, sy >= trainGo);
+  trainWrap.style.opacity = sy >= mine.leave ? 1 - sm(.35, 1, pf) : 0;
+  trainWrap.style.transform = `scale(${1 + .12 * pf * pf})`;
+  const port = placeStack(capPort, capPortSub, vh, sy, road.almostGone, 0);
+  if (pf > 0 && sy < port.leave + vh * 1.2) portWater.render(performance.now() / 1000, portZoom);   // вода — пока порт виден
+  // Мир — как в тёмном концепте: текст про порт уехал — камера отлетает от порта (он отдаляется), экран затягивает
+  // облаками, под ними порт сменяется шаром, облака расходятся; текст справа выезжает, когда пелена разошлась,
+  // дуги поставок выпускаются, пока он приезжает и встаёт
+  const GA = port.leave + vh * .3, GB = GA + vh * .7, gMid = (GA + GB) / 2;
+  const away = sm(port.leave, gMid, sy);
+  portBg.style.transform = `scale(${1.08 - .08 * pf})`;
+  portZoom = PORT_IN + (1 - PORT_IN) * away * away;          // порт отдаляется внутри широкой картинки — до неё целиком
+  const veil = sm(GA - vh * .3, gMid, sy) * (1 - sm(gMid + vh * .02, gMid + vh * .3, sy));
+  const gFade = sm(gMid - vh * .08, gMid + vh * .08, sy);
+  const world = placeStack(capWorld, capWorldSub, vh, sy, GB, 0, Infinity);   // ровно по середине высоты
+  if (gFade > .001 || veil > .001) {
+    const time = performance.now() / 1000;
+    if (gFade > .001) {
+      const arcs = 6 * Math.min(1, Math.max(0, (sy - GB) / Math.max(1, world.subIn - GB)));
+      globe.render(gFade, (sy - gMid) / Math.max(1, world.subIn - gMid), time, smx, smy, arcs, false);
+    } else { globeR.setClearColor(0xffffff, 0); globeR.clear(); }
+    if (veil > .001) globe.renderVeil(veil, Math.min(1, Math.max(0, (sy - GA + vh * .3) / (GB - GA + vh * .75))), time);
+    globeLayer.style.visibility = 'visible';
+  } else if (globeLayer.style.visibility !== 'hidden') { globeR.setClearColor(0xffffff, 0); globeR.clear(); globeLayer.style.visibility = 'hidden'; }
+  const storyH = Math.round(world.subIn + vh * 1.2);          // страница кончается, когда текст про мир встал и постоял
+  if (Math.abs(story.offsetHeight - storyH) > 2) story.style.height = storyH + 'px';
+  if (!(relief.duration > 0)) return;
+  if (sy >= titleIn) {
+    // заголовок встал на место — ролик доигрывает сам с обычной скоростью; доиграл — дальше по кругу идёт петля
+    if (relief.paused && !relief.seeking && relief.currentTime < relief.duration - .05) relief.play().catch(() => {});
+    reliefT = relief.currentTime;
+    if (relief.ended || relief.currentTime >= relief.duration - .05) {
+      if (reliefLoop.paused) reliefLoop.play().catch(() => {});
+      reliefLoop.style.opacity = 1;
+    }
+  } else {
+    // ушли с экрана назад — петля останавливается и ждёт с начала, рельеф снова идёт за скроллом
+    if (!reliefLoop.paused) { reliefLoop.pause(); reliefLoop.currentTime = 0; }
+    reliefLoop.style.opacity = 0;
+    if (!relief.paused) relief.pause();
+    // до этого — по скроллу; время ролика догоняет скролл плавно, а новый кадр просим, когда прошлый уже показан
+    const want = RELIEF_CLIP[0] + (RELIEF_CLIP[1] - RELIEF_CLIP[0]) * Math.min(1, Math.max(0, s2 / (VIDEO_VH * vh)));
+    reliefT += (want - reliefT) * Math.min(1, dt * 7);
+    if (!relief.seeking && Math.abs(relief.currentTime - reliefT) > 1 / 90) relief.currentTime = reliefT;
+  }
+  // линии гаснут, пока рельеф ещё совпадает с ними (первые ~0,4 с ролика), — после этого их уже не видно
+  // (и в любом случае гаснут, когда рельеф наезжает на камеру, — даже если ролик не успел доиграть)
+  document.getElementById('maplines').style.opacity = (1 - sm(.03, .4, reliefT)) * (1 - sm(0, .3, z));
+}
+const perkItems = [...perksBox.querySelectorAll('.perk')];
+const ROW_LAG = 140;                                       // вторая строка отстаёт от первой на столько пикселей прокрутки
 function movePerks(vh, sy) {
-  const stopPx = PERKS_STOP * (story.offsetHeight - vh);
-  const y = (vh - perksBox.offsetHeight) / 2 + Math.max(0, stopPx - sy);
+  const stopPx = PERKS_STOP * PROLOGUE_VH * vh;
+  const leave = Math.max(0, sy - linesEnd(vh));             // экран линий кончился — блок уезжает вверх вместе со скроллом
+  const y = (vh - perksBox.offsetHeight) / 2 - 50 + Math.max(0, stopPx - sy) - leave;
   perksBox.style.transform = `translateY(${Math.min(vh * 1.2, y)}px)`;
+  // вторая строка приезжает чуть позже: едет следом с отставанием и догоняет, когда блок уже встал
+  const lag = Math.min(ROW_LAG, Math.max(0, stopPx + ROW_LAG - sy));
+  perkItems.forEach((el, i) => { el.style.transform = i > 1 ? `translateY(${lag}px)` : ''; });
 }
 // Изолинии: каждая линия — <path> с длиной, приведённой к 1, поэтому прорисовка — это сдвиг штриха.
 // Рисуются справа налево: каждая линия — от своего правого конца, и чем правее линия, тем раньше начинает;
@@ -820,7 +1240,8 @@ function frame(tms) {
   ping = 1 - ping;
 
   // 2. Сцена пролога — рисуем, только пока она на экране
-  if (story.getBoundingClientRect().bottom > 0) {
+  // после экрана линий 3D-сцену под белой заливкой и видео не рисуем
+  if (story.getBoundingClientRect().bottom > 0 && window.scrollY < linesEnd(window.innerHeight) + .05 * window.innerHeight) {
     renderer.setRenderTarget(null);
     renderer.clear();
     placeCamera(p, time);
@@ -846,10 +1267,11 @@ function frame(tms) {
   whiteout.style.opacity = sm(.45, .53, p);                // сквозь облака — в ровный белый (нырок короткий: ели ушли — сразу облака и белое)
   // облака ушли с экрана — основная часть линий прорисовывается вместе со скроллом; когда она готова,
   // остальное (левый нижний угол) дорисовывается само по времени; прокрутили назад — снова идёт за скроллом
-  const lines = sm(.53, .8, p);
+  const lines = sm(.53, .746, p);                         // на 20 % быстрее прежнего
   linesAuto = lines >= .62 ? Math.min(1, Math.max(linesAuto, lines) + dt * .45) : lines;
   drawMaplines(linesAuto);
   movePerks(vh, sy);                                       // блок преимуществ приезжает со скроллом
+  afterLines(vh, sy, dt);                                  // дальше — видео с рельефом и «Добыча»
 
   setLight(false);                       // фон везде светлый — шапка тёмная
   hint.style.opacity = 1 - sm(0, .03, p);
